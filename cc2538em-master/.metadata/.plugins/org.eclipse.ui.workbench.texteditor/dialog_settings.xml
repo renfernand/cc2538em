@@ -13,16 +13,16 @@
 		<item value="false" key="isRegEx"/>
 		<item value="false" key="incremental"/>
 		<item value="false" key="wholeword"/>
-		<item value="sens_itf_mote_pack_send_frame" key="selection"/>
+		<item value="leds_error_toggle" key="selection"/>
 		<list key="findhistory">
-			<item value="sens_itf_mote_pack_send_frame"/>
-			<item value="sens_itf_mote_send_frame"/>
-			<item value="pcSerial"/>
-			<item value="sens_itf_pack_cmd_req"/>
-			<item value="sens_itf_mote_init"/>
-			<item value="sm_state"/>
-			<item value="opentimers_start"/>
-			<item value="spi_init"/>
+			<item value="leds_error_toggle"/>
+			<item value="sens_itf_mote_sm_func_wait_ans"/>
+			<item value="sens_itf_mote_sm_func_req_ver"/>
+			<item value="FSS"/>
+			<item value="leds_"/>
+			<item value="bsp_spi_read_frame"/>
+			<item value="sens_itf_mote_sm_func_req_pt_val"/>
+			<item value="uint8_t  bsp_spi_read_frame(uint8_t *pui8Buf, uint8_t size)"/>
 		</list>
 		<list key="replacehistory">
 		</list>

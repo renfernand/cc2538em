@@ -771,47 +771,6 @@ SSIClockSourceGet(uint32_t ui32Base)
     return(HWREG(ui32Base + SSI_O_CC));
 }
 
-/* RFF 050714
- * Config SPI 2 - PINS PA2 - SSI0CLK; PA3 - SSI0Fss; PA4 - SSI0Rx ; PA5 - SSI0Tx
- *
- */
-void spi_init()
-{
-	// Disable SSI function before configuring module
-	SSIDisable(SSI0_BASE);
-
-	// Set IO clock as SSI clock source
-	SSIClockSourceSet(SSI0_BASE, SSI_CLOCK_PIOSC);
-
-	// Configure the pin muxing for SSI0 functions on port A2, A3, A4, and A5.
-	// Configure the GPIO settings for the SSI pins.
-	// This function also gives control of these pins to the SSI hardware.
-
-	IOCPinConfigPeriphOutput(BSP_GPIO_SSI_BASE, BSP_PIN_SSI_CLK, IOC_MUX_OUT_SEL_SSI0_CLKOUT);
-	GPIOPinTypeSSI(BSP_GPIO_SSI_BASE, BSP_PIN_SSI_CLK);
-
-	IOCPinConfigPeriphOutput(BSP_GPIO_SSI_BASE, BSP_PIN_SSI_FSS, IOC_MUX_OUT_SEL_SSI0_FSSOUT);
-	GPIOPinTypeSSI(BSP_GPIO_SSI_BASE, BSP_PIN_SSI_FSS);
-
-	IOCPinConfigPeriphOutput(BSP_GPIO_SSI_BASE, BSP_PIN_SSI_TX,  IOC_MUX_OUT_SEL_SSI0_TXD);
-	GPIOPinTypeSSI(BSP_GPIO_SSI_BASE,BSP_PIN_SSI_TX);
-
-	IOCPinConfigPeriphInput (BSP_GPIO_SSI_BASE, BSP_PIN_SSI_RX,  IOC_SSIRXD_SSI0);
-	GPIOPinTypeSSI(BSP_GPIO_SSI_BASE, BSP_PIN_SSI_RX);
-
-
-#if 1
-	// Configure SSI module to Motorola/Freescale SPI mode 3:
-	// Polarity  = 1, SCK steady state is high
-	// Phase     = 1, Data changed on first and captured on second clock edge
-	// Word size = 8 bits
-	SSIConfigSetExpClk(SSI0_BASE, SysCtrlIOClockGet(), SSI_FRF_MOTO_MODE_0,
-					 SSI_MODE_MASTER, SysCtrlIOClockGet()/4, 8);
-#endif
-
-	// Enable the SSI0 module.
-    SSIEnable(SSI0_BASE);
-}
 
 //*****************************************************************************
 //

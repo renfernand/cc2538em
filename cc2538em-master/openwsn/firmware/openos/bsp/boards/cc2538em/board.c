@@ -34,6 +34,8 @@
 #define BSP_RADIO_EXT               ( GPIO_PIN_4 )
 #define BSP_USER_BUTTON             ( GPIO_PIN_3 )
 
+#define BSP_SPI_CLK_SPD             8000000UL
+
 //=========================== prototypes ======================================
 
 void antenna_init(void);
@@ -73,7 +75,7 @@ void board_init() {
    button_init();
    bsp_timer_init();
    radiotimer_init();
-   spi_init();
+   bspSpiInit();
    uart_init();
    radio_init();
 
@@ -302,3 +304,56 @@ void SysCtrlWakeupSetting(void)
 }
 
 
+
+/* RFF 050714
+ * Config SPI 2 - PINS PA2 - SSI0CLK; PA3 - SSI0Fss; PA4 - SSI0Rx ; PA5 - SSI0Tx
+ *
+ */
+
+void bspSpiInit(void)
+{
+    uint32_t ui32Dummy;
+
+#if SENSOR_ACCEL
+    SysCtrlPeripheralEnable(BSP_SPI_SSI_ENABLE_BM);
+#endif
+
+    SSIDisable(BSP_SPI_SSI_BASE);
+
+    SSIClockSourceSet(BSP_SPI_SSI_BASE, SSI_CLOCK_PIOSC);
+
+	IOCPinConfigPeriphOutput(BSP_SPI_BUS_BASE, BSP_SPI_FSS , IOC_MUX_OUT_SEL_SSI0_FSSOUT);
+    IOCPinConfigPeriphOutput(BSP_SPI_BUS_BASE, BSP_SPI_SCK , IOC_MUX_OUT_SEL_SSI0_CLKOUT);
+    IOCPinConfigPeriphOutput(BSP_SPI_BUS_BASE, BSP_SPI_MOSI, IOC_MUX_OUT_SEL_SSI0_TXD);
+    IOCPinConfigPeriphInput (BSP_SPI_BUS_BASE, BSP_SPI_MISO, IOC_SSIRXD_SSI0);
+
+    GPIOPinTypeSSI(BSP_SPI_BUS_BASE, (BSP_SPI_MOSI | BSP_SPI_MISO | BSP_SPI_SCK | BSP_SPI_FSS));
+
+    //
+    // Configure SSI module to Motorola/Freescale SPI mode 3:
+    // Polarity  = 1, SCK steady state is high
+    // Phase     = 1, Data changed on first and captured on second clock edge
+    // Word size = 8 bits
+    // Clk       = 8 Mhz
+
+    SSIConfigSetExpClk(BSP_SPI_SSI_BASE, SysCtrlIOClockGet(), SSI_FRF_MOTO_MODE_0,
+                       SSI_MODE_MASTER,BSP_SPI_CLK_SPD , 8);
+
+    SSIEnable(BSP_SPI_SSI_BASE);
+
+
+    // Raise interrupt at end of RX timeout
+    //SSIIntEnable(SSI0_BASE,SSI_RXTO);
+
+    // Register isr in the nvic and enable isr at the nvic
+    //SSIIntRegister(SSI0_BASE, ssi_isr_private);
+
+    // Enable the INT_SSI0 interrupt
+    //IntEnable(INT_SSI0);
+
+
+    while(SSIDataGetNonBlocking(BSP_SPI_SSI_BASE, &ui32Dummy))
+    {
+    }
+
+}

@@ -7,6 +7,7 @@ LDS_SRCS += \
 ../firmware/openos/bsp/boards/cc2538em/cc2538.lds 
 
 C_SRCS += \
+../firmware/openos/bsp/boards/cc2538em/acc_srf06eb.c \
 ../firmware/openos/bsp/boards/cc2538em/board.c \
 ../firmware/openos/bsp/boards/cc2538em/bsp_timer.c \
 ../firmware/openos/bsp/boards/cc2538em/debugpins.c \
@@ -18,6 +19,7 @@ C_SRCS += \
 ../firmware/openos/bsp/boards/cc2538em/uart.c 
 
 OBJS += \
+./firmware/openos/bsp/boards/cc2538em/acc_srf06eb.o \
 ./firmware/openos/bsp/boards/cc2538em/board.o \
 ./firmware/openos/bsp/boards/cc2538em/bsp_timer.o \
 ./firmware/openos/bsp/boards/cc2538em/debugpins.o \
@@ -29,6 +31,7 @@ OBJS += \
 ./firmware/openos/bsp/boards/cc2538em/uart.o 
 
 C_DEPS += \
+./firmware/openos/bsp/boards/cc2538em/acc_srf06eb.d \
 ./firmware/openos/bsp/boards/cc2538em/board.d \
 ./firmware/openos/bsp/boards/cc2538em/bsp_timer.d \
 ./firmware/openos/bsp/boards/cc2538em/debugpins.d \
@@ -40,6 +43,7 @@ C_DEPS += \
 ./firmware/openos/bsp/boards/cc2538em/uart.d 
 
 C_DEPS__QUOTED += \
+"firmware\openos\bsp\boards\cc2538em\acc_srf06eb.d" \
 "firmware\openos\bsp\boards\cc2538em\board.d" \
 "firmware\openos\bsp\boards\cc2538em\bsp_timer.d" \
 "firmware\openos\bsp\boards\cc2538em\debugpins.d" \
@@ -51,6 +55,7 @@ C_DEPS__QUOTED += \
 "firmware\openos\bsp\boards\cc2538em\uart.d" 
 
 OBJS__QUOTED += \
+"firmware\openos\bsp\boards\cc2538em\acc_srf06eb.o" \
 "firmware\openos\bsp\boards\cc2538em\board.o" \
 "firmware\openos\bsp\boards\cc2538em\bsp_timer.o" \
 "firmware\openos\bsp\boards\cc2538em\debugpins.o" \
@@ -62,6 +67,7 @@ OBJS__QUOTED += \
 "firmware\openos\bsp\boards\cc2538em\uart.o" 
 
 C_SRCS__QUOTED += \
+"../firmware/openos/bsp/boards/cc2538em/acc_srf06eb.c" \
 "../firmware/openos/bsp/boards/cc2538em/board.c" \
 "../firmware/openos/bsp/boards/cc2538em/bsp_timer.c" \
 "../firmware/openos/bsp/boards/cc2538em/debugpins.c" \

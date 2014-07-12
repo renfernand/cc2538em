@@ -10,13 +10,21 @@
 #include "sens_itf.h"
 #include "opentimers.h"
 #include "scheduler.h"
+#include "board.h"
 #include "sys_ctrl.h"          // RFF 050714
 #include "ssi.h"               // RFF 050714
 #include "leds.h"
 
+#if SENSOR_ACCEL
+#include "acc_bma250.h"
+#endif
+
 #define SENS_ITF_DBG_FRAME  0
 #define SENS_ITF_OUTPUT     1
 #define SENS_ITF_SM_TICK_MS 250
+#define DUMMY_BYTE 0x00
+
+
 
 /*
 void spi_init(void);
@@ -30,6 +38,18 @@ void spi_init(void);
 
 // minimum tick time is 1
 #define MS2TICK(ms) (ms) > SENS_ITF_SM_TICK_MS ? (ms) / SENS_ITF_SM_TICK_MS : 1
+
+#if 1
+enum {
+    SENS_ITF_STATE_INIT = 0,
+    SENS_ITF_STATE_SEND_ITF_VER,
+    SENS_ITF_STATE_WAIT_ITF_VER_ANS,
+    SENS_ITF_STATE_PROC_ITF_VER,
+    SENS_ITF_STATE_SEND_PT_VAL,
+    SENS_ITF_STATE_WAIT_PT_VAL_ANS,
+    SENS_ITF_STATE_PROC_PT_VAL
+};
+#else
 
 enum {
     SENS_ITF_STATE_INIT = 0,
@@ -48,6 +68,7 @@ enum {
     SENS_ITF_STATE_WAIT_PT_VAL_ANS = 13,
     SENS_ITF_STATE_PROC_PT_VAL = 14
 };
+#endif
 
 enum {
 	SENS_ITF_STATE_EXEC_OK = 0,
@@ -95,19 +116,26 @@ typedef struct sens_itf_acq_schedule_s
 } sens_itf_acq_schedule_t;
 
 
-static sens_itf_mote_sm_state_t sm_state;
-static sens_itf_point_ctrl_t sensor_points;
-static sens_itf_cmd_brd_id_t board_info;
-static const uint8_t datatype_sizes[] = { 1, 1, 2, 2, 4, 4, 8, 8, 4, 8 }; // check sens_itf_datatypes_e order
-static sens_itf_acq_schedule_t acquisition_schedule;
-static uint8_t frame[SENS_ITF_MAX_FRAME_SIZE];
-static sens_itf_cmd_req_t cmd;
-static sens_itf_cmd_res_t ans;
+sens_itf_mote_sm_state_t sm_state;
+sens_itf_point_ctrl_t sensor_points;
+sens_itf_cmd_brd_id_t board_info;
+const uint8_t datatype_sizes[] = { 1, 1, 2, 2, 4, 4, 8, 8, 4, 8 }; // check sens_itf_datatypes_e order
+sens_itf_acq_schedule_t acquisition_schedule;
+uint8_t frame[SENS_ITF_MAX_FRAME_SIZE];
+sens_itf_cmd_req_t cmd;
+sens_itf_cmd_res_t ans;
+static volatile uint8_t rx_frame[SENS_ITF_MAX_FRAME_SIZE];
+static volatile uint8_t num_rx_bytes;
 
-#if 0
-/*
+const sens_itf_mote_sm_table_t sens_itf_mote_sm_table[];
+
+uint8_t bsp_spi_write_frame(uint8_t *frame, uint8_t size);
+uint8_t  bsp_spi_read_frame(uint8_t *pui8Buf, uint8_t size);
+
+
 // Serial or SPI interrupt, called when a new byte is received
-static void sens_itf_sensor_rx_byte(void)
+#if 0
+static void ssi_isr_private(void)
 {
     uint8_t value;
 
@@ -129,17 +157,111 @@ static void sens_itf_sensor_rx_byte(void)
 
     // ENABLE INTERRUPTS
 }
-*/
+#else
+
 #endif
 
-extern sens_itf_mote_sm_table_t sens_itf_mote_sm_table[];
+/*-------------------------------------
+ * Rotina para Escrever um frame na SPI
+ */
 
 static uint8_t sens_itf_mote_send_frame(uint8_t *frame, uint8_t size)
 {
-    //int16_t sent;
-   // return (sent < 0 ? 0 : (uint8_t) sent); // CHECK AGAIN
-	return 0;
+    int8_t sent=size;
+	uint32_t ui32Data;
+
+    leds_debug_toggle();
+
+#if ( SENSOR_ACCEL == 1)
+
+    frame[0] = ACC_X_LSB;
+
+	while(SSIBusy(BSP_SPI_SSI_BASE))
+	{
+	}
+
+	while(SSIDataGetNonBlocking(BSP_SPI_SSI_BASE, &ui32Data));
+	{
+	}
+
+	GPIOPinWrite(BSP_ACC_CS_BASE, BSP_ACC_CS, 0);  // Set CSn active
+
+	while (sent > 0)
+	{
+		SSIDataPut(BSP_SPI_SSI_BASE, (*frame | ACC_READ_M));
+		SSIDataGet(BSP_SPI_SSI_BASE, &ui32Data);
+
+		frame++;
+		sent--;
+	}
+#else
+
+    while(SSIBusy(BSP_SPI_SSI_BASE))
+	{
+	}
+
+	while(SSIDataGetNonBlocking(BSP_SPI_SSI_BASE, &ui32Data));
+	{
+	}
+
+	while (sent > 0)
+	{
+		SSIDataPut(BSP_SPI_SSI_BASE, *frame );
+		SSIDataGet(BSP_SPI_SSI_BASE, &ui32Data);
+		frame++;
+		sent--;
+	}
+#endif
+
+    return (sent < 0 ? 0 : (uint8_t) size); // CHECK AGAIN
 }
+
+
+/*-------------------------------------
+ * Rotina para Ler um frame na SPI
+ */
+static uint8_t receive_spi(sens_itf_mote_sm_state_t *st, uint8_t size)
+{
+	uint8_t NumByteToRead = size;
+	uint32_t ui32Data=0;
+	volatile uint8_t buf[10];
+	uint8_t count=0;
+
+    leds_radio_toggle();
+
+    while(SSIBusy(BSP_SPI_SSI_BASE))
+	{
+	}
+
+	while(SSIDataGetNonBlocking(BSP_SPI_SSI_BASE, &ui32Data));
+	{
+	}
+
+	while (NumByteToRead > 0)
+	{
+		SSIDataPut(BSP_SPI_SSI_BASE, DUMMY_BYTE);
+		SSIDataGet(BSP_SPI_SSI_BASE, &ui32Data);
+
+	    //if (count < SENS_ITF_MAX_FRAME_SIZE)
+		if (count < 10)
+	    	buf[count] = (uint8_t) (ui32Data & 0xFF);
+
+	    count++;
+
+	    //if (count >= SENS_ITF_MAX_FRAME_SIZE)
+	    //	count = 0;
+
+		NumByteToRead--;
+	}
+
+	st->frame_arrived = 1;
+
+	return size;
+}
+
+/*-
+ *
+ */
 
 static uint8_t sens_itf_mote_pack_send_frame(sens_itf_cmd_req_t *cmd, uint8_t cmd_size)
 {
@@ -147,8 +269,18 @@ static uint8_t sens_itf_mote_pack_send_frame(sens_itf_cmd_req_t *cmd, uint8_t cm
 
     size = sens_itf_pack_cmd_req(cmd, frame);
 
+    //teste rff
+    //cmd_size = size;
+    //frame[0] = 0x01;
+    //frame[1] = 0x02;
+    //frame[2] = 0x03;
+    //frame[3] = 0x44;
+    //teste rff
+
     if (size != cmd_size)
         return SENS_ITF_STATE_EXEC_ERROR;
+
+
 
     if (sens_itf_mote_send_frame(frame, cmd_size) != cmd_size)
     	return SENS_ITF_STATE_EXEC_ERROR;
@@ -156,15 +288,23 @@ static uint8_t sens_itf_mote_pack_send_frame(sens_itf_cmd_req_t *cmd, uint8_t cm
     return SENS_ITF_STATE_EXEC_OK;
 }
 
+/* ------------------------------------
+ * ler o valor de um parametro
+ *
+ */
+
 static uint8_t sens_itf_mote_sm_func_pt_val_ans(sens_itf_mote_sm_state_t *st)
 {
-	uint8_t point;
-	uint8_t size;
+	uint8_t point,ui8Len;
+	uint8_t size,ret;
     uint8_t ans_size;
+    uint8_t *pui8Buf;
+    uint32_t ui32Data;
 
     point = acquisition_schedule.scan.index[st->point_index];
     ans_size = 6 + datatype_sizes[sensor_points.points[point].desc.type];
 
+#if 0 //(SENSOR_ACCEL == 0)
     size = sens_itf_unpack_cmd_res(&ans, frame, ans_size);
 
     // retry ?
@@ -177,14 +317,42 @@ static uint8_t sens_itf_mote_sm_func_pt_val_ans(sens_itf_mote_sm_state_t *st)
     st->retries = 0;
     st->point_index++;
 
+    memcpy(&sensor_points.points[point].value, &ans.payload.point_value_cmd, sizeof(sens_itf_cmd_point_t));
+
+#else
+    //leio dado
+    pui8Buf = (uint8_t *) &ans.payload.point_value_cmd;
+    ui8Len = ans_size;
+
+    while(ui8Len--)
+    {
+        //
+        // Send dummy byte and read returned data from SPI FIFO
+        //
+        SSIDataPut(BSP_SPI_SSI_BASE, 0x00);
+        SSIDataGet(BSP_SPI_SSI_BASE, &ui32Data);
+
+        // Store read data to buffer
+        //
+        *pui8Buf++ = (ui32Data & 0xFF);
+    }
+
+    GPIOPinWrite(BSP_ACC_CS_BASE, BSP_ACC_CS, BSP_ACC_CS); // Clear CSn
+
+    //copio para buffer
+    memcpy(&sensor_points.points[point].value, &ans.payload.point_value_cmd, sizeof(sens_itf_cmd_point_t));
+#endif
     return SENS_ITF_STATE_EXEC_OK;
 }
 
+/*
+ * Usado para ler um parametro da placa sensora
+ */
 
 static uint8_t sens_itf_mote_sm_func_req_pt_val(sens_itf_mote_sm_state_t *st)
 {
 	uint8_t point;
-
+#if 0 //(SENSOR_ACCEL == 0)
 	// end of point reading
     if(st->point_index >= acquisition_schedule.scan.num_of_points)
     	return SENS_ITF_STATE_EXEC_WAIT_ABORT;
@@ -200,8 +368,12 @@ static uint8_t sens_itf_mote_sm_func_req_pt_val(sens_itf_mote_sm_state_t *st)
     st->trmout_counter = 0;
     st->trmout = MS2TICK(5000);
     return sens_itf_mote_pack_send_frame(&cmd, 4);
+#else
+    return sens_itf_mote_pack_send_frame(&cmd, 4);
+#endif
 }
 
+#if 0
 static uint8_t sens_itf_mote_sm_func_run_sch(sens_itf_mote_sm_state_t *st)
 {
     uint8_t n;
@@ -323,7 +495,7 @@ static uint8_t sens_itf_mote_sm_func_req_brd_id(sens_itf_mote_sm_state_t *st)
     st->trmout = MS2TICK(5000);
     return sens_itf_mote_pack_send_frame(&cmd, 4);
 }
-
+#endif
 static uint8_t sens_itf_mote_sm_func_proc_itf_ver_ans(sens_itf_mote_sm_state_t *st)
 {
     uint8_t size;
@@ -340,8 +512,15 @@ static uint8_t sens_itf_mote_sm_func_proc_itf_ver_ans(sens_itf_mote_sm_state_t *
     return SENS_ITF_STATE_EXEC_OK;
 }
 
+
+/* TODO!!!! AQUI PARECE QUE O CODIGO ESTA BASEADO EM UM ESQUEMA DE TIMER QUE EH BASE PARA UART
+ *  NA SPI NAO SEI COMO FAZER ISSO...PARECE QUE NAO FUNCIONA DA MESMA FORMA.
+ */
 static uint8_t sens_itf_mote_sm_func_wait_ans(sens_itf_mote_sm_state_t *st)
 {
+    uint8_t ret;
+	ret = receive_spi(st, 6);
+
 	if(st->frame_arrived)
 		return SENS_ITF_STATE_EXEC_WAIT_STOP;
 
@@ -352,7 +531,6 @@ static uint8_t sens_itf_mote_sm_func_wait_ans(sens_itf_mote_sm_state_t *st)
 
 	return SENS_ITF_STATE_EXEC_WAIT_OK;
 }
-
 
 
 static uint8_t sens_itf_mote_sm_func_req_ver(sens_itf_mote_sm_state_t *st)
@@ -368,6 +546,8 @@ static uint8_t sens_itf_mote_sm_func_init(sens_itf_mote_sm_state_t *st)
 {
 	uint8_t ret = SENS_ITF_STATE_EXEC_OK;
 
+	leds_error_toggle();
+
 	memset(&cmd, 0, sizeof(cmd));
 	memset(&ans, 0, sizeof(ans));
     memset(&sensor_points, 0, sizeof(sensor_points));
@@ -375,23 +555,41 @@ static uint8_t sens_itf_mote_sm_func_init(sens_itf_mote_sm_state_t *st)
 	memset(&acquisition_schedule, 0, sizeof(acquisition_schedule));
 	memset(st, 0, sizeof(sens_itf_mote_sm_state_t));
 
+	num_rx_bytes=0;
+
+
+#if 0
+	//aqui vou criar uma mensagem fake
+	acquisition_schedule.num_of_points = 3;
+	acquisition_schedule.scan.num_of_points = 3;
+	acquisition_schedule.scan.index[0] = 0;
+	acquisition_schedule.scan.index[1] = 1;
+	acquisition_schedule.scan.index[2] = 2;
+
+	//datatype_sizes[] = { 1, 1, 2, 2, 4, 4, 8, 8, 4, 8 }; // check sens_itf_datatypes_e order
+
+	sensor_points.points[0].desc.type = 2;
+	sensor_points.points[1].desc.type = 2;
+	sensor_points.points[2].desc.type = 2;
+
+	cmd.hdr.size = 4;
+	cmd.hdr.addr = SENS_ITF_REGMAP_BRD_CMD;
+
+	st->point_index = 0;
+
+#endif
 	return ret;
 }
 
 void sens_itf_mote_sm(void)
 {
 	uint8_t ret;
-    uint32_t pui32DataTx[NUM_SSI_DATA];
-    uint32_t pui32DataRx[NUM_SSI_DATA];
-    uint32_t ui32Index;
-    uint32_t ui32Data = (uint32_t) 0x12345633;
-
 
 	#ifdef TRACE_ON
 	uint8_t ls = sm_state.state;
 	#endif
 
-#if 1
+
 	ret = sens_itf_mote_sm_table[sm_state.state].func(&sm_state);
 
 	switch(ret)
@@ -417,41 +615,30 @@ void sens_itf_mote_sm(void)
     printf("sens_itf_mote_sm %d -> %d\n",ls,sm_state.state);
 	#endif
 
-#else
-	leds_debug_toggle();
-
-    SSIDataPut(SSI0_BASE, ui32Data);
-
-#if 0
-    //
-    // Wait until SSI0 is done transferring all the data in the transmit FIFO.
-    //
-    while(SSIBusy(SSI0_BASE))
-    {
-    }
-
-    //
-    // Receive 3 bytes of data.
-    //
-    for(ui32Index = 0; ui32Index < NUM_SSI_DATA; ui32Index++)
-    {
-        //
-        // Receive the data using the "blocking" Get function. This function
-        // will wait until there is data in the receive FIFO before returning.
-        //
-        SSIDataGet(SSI0_BASE, &pui32DataRx[ui32Index]);
-
-        //
-        // Since we are using 8-bit data, mask off the MSB.
-        //
-        pui32DataRx[ui32Index] &= 0x00FF;
-    }
-#endif
-
-#endif
-
 }
 
+static void sens_itf_mote_tick(void)
+{
+    scheduler_push_task((task_cbt) sens_itf_mote_sm, TASKPRIO_SENS_ITF_MAIN);
+}
+
+uint8_t sens_itf_mote_init(void)
+{
+#if  (SENSOR_ACCEL == 1)
+    // Initialize accelerometer
+    accInit();
+#endif
+
+	memset(&sm_state, 0, sizeof(sens_itf_mote_sm_state_t));
+	sm_state.state = SENS_ITF_STATE_INIT;
+
+    opentimers_start(SENS_ITF_SM_TICK_MS, TIMER_PERIODIC, TIME_MS, (opentimers_cbt) sens_itf_mote_tick);
+
+    return 0;
+}
+
+
+#if 0
 sens_itf_mote_sm_table_t sens_itf_mote_sm_table[] =
 {     //{ func,                                   next_state,                      abort_state,                error_state         }
 		{ sens_itf_mote_sm_func_init,             SENS_ITF_STATE_SEND_ITF_VER,     SENS_ITF_STATE_INIT,        SENS_ITF_STATE_INIT }, // SENS_ITF_STATE_INIT
@@ -470,24 +657,18 @@ sens_itf_mote_sm_table_t sens_itf_mote_sm_table[] =
 		{ sens_itf_mote_sm_func_wait_ans,         SENS_ITF_STATE_PROC_PT_VAL,      SENS_ITF_STATE_SEND_PT_VAL, SENS_ITF_STATE_INIT }, // SENS_ITF_STATE_WAIT_PT_VAL_ANS
 		{ sens_itf_mote_sm_func_pt_val_ans,       SENS_ITF_STATE_SEND_PT_VAL,      SENS_ITF_STATE_INIT,        SENS_ITF_STATE_INIT }, // SENS_ITF_STATE_PROC_PT_VAL
 };
+#else
+const sens_itf_mote_sm_table_t sens_itf_mote_sm_table[] =
+{     //{ func,                                   next_state,                      abort_state,                error_state         }
+		{ sens_itf_mote_sm_func_init,             SENS_ITF_STATE_SEND_ITF_VER,     SENS_ITF_STATE_INIT,        SENS_ITF_STATE_INIT }, // SENS_ITF_STATE_INIT
+		{ sens_itf_mote_sm_func_req_ver,          SENS_ITF_STATE_WAIT_ITF_VER_ANS,     SENS_ITF_STATE_INIT,        SENS_ITF_STATE_INIT }, // SENS_ITF_STATE_SEND_ITF_VER
+		{ sens_itf_mote_sm_func_wait_ans,         SENS_ITF_STATE_PROC_ITF_VER,     SENS_ITF_STATE_INIT,        SENS_ITF_STATE_INIT }, // SENS_ITF_STATE_WAIT_ITF_VER_ANS
+		{ sens_itf_mote_sm_func_proc_itf_ver_ans, SENS_ITF_STATE_SEND_ITF_VER,      SENS_ITF_STATE_INIT,        SENS_ITF_STATE_INIT }, // SENS_ITF_STATE_PROC_ITF_VER
+		{ sens_itf_mote_sm_func_req_pt_val,       SENS_ITF_STATE_SEND_PT_VAL,     SENS_ITF_STATE_INIT,        SENS_ITF_STATE_INIT }, // SENS_ITF_STATE_SEND_PT_VAL
+		{ sens_itf_mote_sm_func_pt_val_ans,       SENS_ITF_STATE_SEND_PT_VAL,     SENS_ITF_STATE_INIT,        SENS_ITF_STATE_INIT }, // SENS_ITF_STATE_PROC_PT_VAL
+};
 
-static void sens_itf_mote_tick(void)
-{
-    scheduler_push_task((task_cbt) sens_itf_mote_sm, TASKPRIO_SENS_ITF_MAIN);
-}
-
-uint8_t sens_itf_mote_init(void)
-{
-	//spi_init();
-
-	memset(&sm_state, 0, sizeof(sens_itf_mote_sm_state_t));
-	sm_state.state = SENS_ITF_STATE_INIT;
-
-    opentimers_start(SENS_ITF_SM_TICK_MS, TIMER_PERIODIC, TIME_MS, (opentimers_cbt) sens_itf_mote_tick);
-
-    return 0;
-}
-
+#endif
 
 
 

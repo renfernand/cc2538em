@@ -54,14 +54,6 @@ extern "C"
 #include "hw_types.h"
 
 
-// teste rff
-
-#define BSP_GPIO_SSI_BASE           GPIO_A_BASE
-#define BSP_PIN_SSI_CLK             GPIO_PIN_2
-#define BSP_PIN_SSI_FSS             GPIO_PIN_3
-#define BSP_PIN_SSI_RX              GPIO_PIN_4   //SPI_MOSI
-#define BSP_PIN_SSI_TX              GPIO_PIN_5   //SPI_MISO
-
 //*****************************************************************************
 //
 // Values that can be passed to SSIIntEnable, SSIIntDisable, and SSIIntClear
@@ -105,6 +97,38 @@ extern "C"
 //*****************************************************************************
 #define SSI_CLOCK_SYSTEM        0x00000000
 #define SSI_CLOCK_PIOSC         0x00000001
+
+//*****************************************************************************
+//
+// SPI defines (Common for LCD, SD reader and accelerometer)
+// RFF 090714
+//*****************************************************************************
+
+// teste rff
+//*****************************************************************************
+//
+// SPI defines (Common for LCD, SD reader and accelerometer)
+//*****************************************************************************
+#if SENSOR_ACCEL
+// Here is the base for the ACCEL for SmarRF06EB
+#define BSP_SPI_SSI_BASE        SSI0_BASE
+//! Bitmask to enable SSI module.
+#define BSP_SPI_SSI_ENABLE_BM   SYS_CTRL_PERIPH_SSI0
+#define BSP_SPI_BUS_BASE        GPIO_A_BASE
+#define BSP_SPI_SCK             GPIO_PIN_2      //!< PA2
+#define BSP_SPI_MOSI            GPIO_PIN_4      //!< PA4
+#define BSP_SPI_MISO            GPIO_PIN_5      //!< PA5
+#else
+
+#define BSP_SPI_SSI_BASE        SSI0_BASE
+//! Bitmask to enable SSI module.
+#define BSP_SPI_SSI_ENABLE_BM   0     //enable peripherical
+#define BSP_SPI_BUS_BASE        GPIO_A_BASE
+#define BSP_SPI_SCK             GPIO_PIN_2      //!< PA2
+#define BSP_SPI_FSS             GPIO_PIN_3      //!< PA3
+#define BSP_SPI_MOSI            GPIO_PIN_4      //!< PA4
+#define BSP_SPI_MISO            GPIO_PIN_5      //!< PA5
+#endif
 
 //*****************************************************************************
 //

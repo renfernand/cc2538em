@@ -2,20 +2,20 @@
 <java version="1.6.0_13" class="java.beans.XMLDecoder"> 
  <object class="com.ti.dvt.datamodel.solution.SolutionManager$PersistState"> 
   <void property="defaultSolution"> 
-   <string>C:\OWSNMB\cc2538em-master\dvt\AnalysisSolutionsTemp\AnalysisSolution1404676040190\null</string> 
+   <string>C:\OWSNMB\cc2538em-master\dvt\AnalysisSolutionsTemp\AnalysisSolution1405122975126\null</string> 
   </void> 
   <void property="openedSolutions"> 
    <void method="add"> 
     <string>C:\ti\ccsv6\ccs_base\dvt_4.0.0.201404091540\FunctionProfile\solutions\null - FunctionProfile</string> 
    </void> 
    <void method="add"> 
-    <string>C:\ti\ccsv6\ccs_base\dvt_4.0.0.201404091540\FunctionProfile\solutions\null - CoverageProfile</string> 
-   </void> 
-   <void method="add"> 
     <string>C:\ti\ccsv6\ccs_base\dvt_4.0.0.201404091540\CodeGen\solutions\CodeGenCoverage</string> 
    </void> 
    <void method="add"> 
-    <string>C:\OWSNMB\cc2538em-master\dvt\AnalysisSolutionsTemp\AnalysisSolution1404676040190\null</string> 
+    <string>C:\ti\ccsv6\ccs_base\dvt_4.0.0.201404091540\FunctionProfile\solutions\null - CoverageProfile</string> 
+   </void> 
+   <void method="add"> 
+    <string>C:\OWSNMB\cc2538em-master\dvt\AnalysisSolutionsTemp\AnalysisSolution1405122975126\null</string> 
    </void> 
   </void> 
  </object> 
