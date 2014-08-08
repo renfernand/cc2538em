@@ -131,6 +131,7 @@ void openwsn_init() {
    //udpstorm_init();
    //- board-specific
    //imu_init();
+
    //+++++ CoAP
    //- debug
    //- core
@@ -143,12 +144,15 @@ void openwsn_init() {
    //rreg_init();
    //rex_init();
    //rrube_init();
-   //layerdebug_init();   //RFF 050714
+   //layerdebug_init();
    //- board-specific
    //rheli_init();
    //rt_init();
    //rxl1_init();
-   sens_itf_mote_init();   //RFF 050714
+
+   //rff
+   //cc2538em_accel_init();
+   sens_itf_mote_init();
    
    openserial_printInfo(
       COMPONENT_OPENWSN,ERR_BOOTED,
