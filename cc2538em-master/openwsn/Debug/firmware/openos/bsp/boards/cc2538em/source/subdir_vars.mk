@@ -4,6 +4,7 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../firmware/openos/bsp/boards/cc2538em/source/acc_bsp.c \
 ../firmware/openos/bsp/boards/cc2538em/source/adc.c \
 ../firmware/openos/bsp/boards/cc2538em/source/aes.c \
 ../firmware/openos/bsp/boards/cc2538em/source/ccm.c \
@@ -26,6 +27,7 @@ C_SRCS += \
 ../firmware/openos/bsp/boards/cc2538em/source/watchdog.c 
 
 OBJS += \
+./firmware/openos/bsp/boards/cc2538em/source/acc_bsp.o \
 ./firmware/openos/bsp/boards/cc2538em/source/adc.o \
 ./firmware/openos/bsp/boards/cc2538em/source/aes.o \
 ./firmware/openos/bsp/boards/cc2538em/source/ccm.o \
@@ -48,6 +50,7 @@ OBJS += \
 ./firmware/openos/bsp/boards/cc2538em/source/watchdog.o 
 
 C_DEPS += \
+./firmware/openos/bsp/boards/cc2538em/source/acc_bsp.d \
 ./firmware/openos/bsp/boards/cc2538em/source/adc.d \
 ./firmware/openos/bsp/boards/cc2538em/source/aes.d \
 ./firmware/openos/bsp/boards/cc2538em/source/ccm.d \
@@ -70,6 +73,7 @@ C_DEPS += \
 ./firmware/openos/bsp/boards/cc2538em/source/watchdog.d 
 
 C_DEPS__QUOTED += \
+"firmware\openos\bsp\boards\cc2538em\source\acc_bsp.d" \
 "firmware\openos\bsp\boards\cc2538em\source\adc.d" \
 "firmware\openos\bsp\boards\cc2538em\source\aes.d" \
 "firmware\openos\bsp\boards\cc2538em\source\ccm.d" \
@@ -92,6 +96,7 @@ C_DEPS__QUOTED += \
 "firmware\openos\bsp\boards\cc2538em\source\watchdog.d" 
 
 OBJS__QUOTED += \
+"firmware\openos\bsp\boards\cc2538em\source\acc_bsp.o" \
 "firmware\openos\bsp\boards\cc2538em\source\adc.o" \
 "firmware\openos\bsp\boards\cc2538em\source\aes.o" \
 "firmware\openos\bsp\boards\cc2538em\source\ccm.o" \
@@ -114,6 +119,7 @@ OBJS__QUOTED += \
 "firmware\openos\bsp\boards\cc2538em\source\watchdog.o" 
 
 C_SRCS__QUOTED += \
+"../firmware/openos/bsp/boards/cc2538em/source/acc_bsp.c" \
 "../firmware/openos/bsp/boards/cc2538em/source/adc.c" \
 "../firmware/openos/bsp/boards/cc2538em/source/aes.c" \
 "../firmware/openos/bsp/boards/cc2538em/source/ccm.c" \
