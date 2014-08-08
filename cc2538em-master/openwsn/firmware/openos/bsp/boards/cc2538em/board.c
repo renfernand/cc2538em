@@ -24,6 +24,8 @@
 #include "radio.h"
 #include "hw_types.h"
 #include "hw_memmap.h"
+#include "hw_ints.h"
+#include  "uarthal.h"
 
 
 //=========================== variables =======================================
@@ -53,6 +55,7 @@ static void SysCtrlSleepSetting(void);
 static void SysCtrlRunSetting(void);
 static void SysCtrlWakeupSetting(void);
 
+void ssi_isr_private(void);
 //=========================== main ============================================
 
 extern int mote_main(void);
@@ -75,11 +78,14 @@ void board_init() {
    button_init();
    bsp_timer_init();
    radiotimer_init();
-   bspSpiInit();
+#if ENABLE_UART0_DAG
    uart_init();
+#else
+   uart1_init();    //sens_itf
+#endif
    radio_init();
 
-   leds_debug_on();
+  // leds_debug_on();
 }
 
 /**
@@ -255,7 +261,7 @@ static void SysCtrlSleepSetting(void)
   SysCtrlPeripheralSleepDisable(SYS_CTRL_PERIPH_SSI1);
 
   /* Disable UART 0, 1 during sleep */
-  SysCtrlPeripheralSleepDisable(SYS_CTRL_PERIPH_UART1);
+  //SysCtrlPeripheralSleepDisable(SYS_CTRL_PERIPH_UART1);    //RFF
 
   /* Disable I2C, PKA, AES during sleep */
   SysCtrlPeripheralSleepDisable(SYS_CTRL_PERIPH_I2C);
@@ -264,6 +270,7 @@ static void SysCtrlSleepSetting(void)
 
   /* Enable UART and RFC during sleep */
   SysCtrlPeripheralSleepEnable(SYS_CTRL_PERIPH_UART0);
+  SysCtrlPeripheralSleepEnable(SYS_CTRL_PERIPH_UART1);    //RFF
   SysCtrlPeripheralSleepEnable(SYS_CTRL_PERIPH_RFC);
 }
 
@@ -281,7 +288,7 @@ void SysCtrlRunSetting(void)
   SysCtrlPeripheralDisable(SYS_CTRL_PERIPH_SSI1);
 
   /* Disable UART1 when running */
-  SysCtrlPeripheralDisable(SYS_CTRL_PERIPH_UART1);
+  //SysCtrlPeripheralDisable(SYS_CTRL_PERIPH_UART1);    //RFF
 
   /* Disable I2C, AES and PKA when running */
   SysCtrlPeripheralDisable(SYS_CTRL_PERIPH_I2C);
@@ -290,6 +297,7 @@ void SysCtrlRunSetting(void)
 
   /* Enable UART0 and RFC when running */
   SysCtrlPeripheralEnable(SYS_CTRL_PERIPH_UART0);
+  SysCtrlPeripheralEnable(SYS_CTRL_PERIPH_UART1);
   SysCtrlPeripheralEnable(SYS_CTRL_PERIPH_RFC);
 
   /* The SSI0 peripheral must be enabled for use. */
@@ -305,55 +313,4 @@ void SysCtrlWakeupSetting(void)
 
 
 
-/* RFF 050714
- * Config SPI 2 - PINS PA2 - SSI0CLK; PA3 - SSI0Fss; PA4 - SSI0Rx ; PA5 - SSI0Tx
- *
- */
 
-void bspSpiInit(void)
-{
-    uint32_t ui32Dummy;
-
-#if SENSOR_ACCEL
-    SysCtrlPeripheralEnable(BSP_SPI_SSI_ENABLE_BM);
-#endif
-
-    SSIDisable(BSP_SPI_SSI_BASE);
-
-    SSIClockSourceSet(BSP_SPI_SSI_BASE, SSI_CLOCK_PIOSC);
-
-	IOCPinConfigPeriphOutput(BSP_SPI_BUS_BASE, BSP_SPI_FSS , IOC_MUX_OUT_SEL_SSI0_FSSOUT);
-    IOCPinConfigPeriphOutput(BSP_SPI_BUS_BASE, BSP_SPI_SCK , IOC_MUX_OUT_SEL_SSI0_CLKOUT);
-    IOCPinConfigPeriphOutput(BSP_SPI_BUS_BASE, BSP_SPI_MOSI, IOC_MUX_OUT_SEL_SSI0_TXD);
-    IOCPinConfigPeriphInput (BSP_SPI_BUS_BASE, BSP_SPI_MISO, IOC_SSIRXD_SSI0);
-
-    GPIOPinTypeSSI(BSP_SPI_BUS_BASE, (BSP_SPI_MOSI | BSP_SPI_MISO | BSP_SPI_SCK | BSP_SPI_FSS));
-
-    //
-    // Configure SSI module to Motorola/Freescale SPI mode 3:
-    // Polarity  = 1, SCK steady state is high
-    // Phase     = 1, Data changed on first and captured on second clock edge
-    // Word size = 8 bits
-    // Clk       = 8 Mhz
-
-    SSIConfigSetExpClk(BSP_SPI_SSI_BASE, SysCtrlIOClockGet(), SSI_FRF_MOTO_MODE_0,
-                       SSI_MODE_MASTER,BSP_SPI_CLK_SPD , 8);
-
-    SSIEnable(BSP_SPI_SSI_BASE);
-
-
-    // Raise interrupt at end of RX timeout
-    //SSIIntEnable(SSI0_BASE,SSI_RXTO);
-
-    // Register isr in the nvic and enable isr at the nvic
-    //SSIIntRegister(SSI0_BASE, ssi_isr_private);
-
-    // Enable the INT_SSI0 interrupt
-    //IntEnable(INT_SSI0);
-
-
-    while(SSIDataGetNonBlocking(BSP_SPI_SSI_BASE, &ui32Dummy))
-    {
-    }
-
-}
