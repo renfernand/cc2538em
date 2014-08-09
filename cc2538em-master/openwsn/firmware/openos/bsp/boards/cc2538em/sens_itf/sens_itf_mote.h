@@ -71,21 +71,6 @@ extern "C" {
 
 
 
-#if 0
-enum {
-    SENS_ITF_STATE_INIT = 0,
-    SENS_ITF_STATE_SEND_ITF_VER,
-    SENS_ITF_STATE_WAIT_ITF_VER_ANS,
-    SENS_ITF_STATE_PROC_ITF_VER,
-    SENS_ITF_STATE_SEND_BRD_ID,
-    SENS_ITF_STATE_WAIT_BRD_ID_ANS,
-    SENS_ITF_STATE_PROC_BRD_ID,
-    SENS_ITF_STATE_SEND_PT_VAL,
-    SENS_ITF_STATE_WAIT_PT_VAL_ANS,
-    SENS_ITF_STATE_PROC_PT_VAL
-};
-#else
-
 enum {
     SENS_ITF_STATE_INIT = 0,
     SENS_ITF_STATE_SEND_ITF_VER = 1,
@@ -103,7 +88,6 @@ enum {
     SENS_ITF_STATE_WAIT_PT_VAL_ANS = 13,
     SENS_ITF_STATE_PROC_PT_VAL = 14
 };
-#endif
 
 enum {
 	SENS_ITF_STATE_EXEC_OK = 0,
@@ -184,7 +168,10 @@ uint8_t sens_itf_mote_init(void);
 void bspUartIsrHandler (void);
 uint8_t sens_itf_mote_send_frame(uint8_t *frame, uint8_t size);
 uint16_t bspUartRxCharsAvail(void);
-
+static uint8_t sens_itf_mote_sm_func_build_sch(sens_itf_mote_sm_state_t *st);
+static uint8_t sens_itf_mote_sm_func_pt_desc_ans(sens_itf_mote_sm_state_t *st);
+static uint8_t sens_itf_mote_sm_func_req_pt_desc(sens_itf_mote_sm_state_t *st);
+static uint8_t sens_itf_mote_sm_func_run_sch(sens_itf_mote_sm_state_t *st);
 
 #ifdef __cplusplus
 }

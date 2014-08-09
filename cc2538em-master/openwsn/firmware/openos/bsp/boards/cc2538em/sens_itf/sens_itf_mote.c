@@ -418,7 +418,6 @@ static uint8_t sens_itf_mote_sm_func_proc_itf_ver_ans(sens_itf_mote_sm_state_t *
     if ((SENS_ITF_ANS_OK != ans.hdr.status) || (SENS_ITF_LATEST_VERSION != ans.payload.itf_version_cmd.version))
     	return SENS_ITF_STATE_EXEC_ERROR;
 
-    leds_radio_toggle();  //LED2
 
     return SENS_ITF_STATE_EXEC_OK;
 }
@@ -475,8 +474,6 @@ static uint8_t sens_itf_mote_sm_func_req_ver(sens_itf_mote_sm_state_t *st)
 static uint8_t sens_itf_mote_sm_func_init(sens_itf_mote_sm_state_t *st)
 {
 	uint8_t ret = SENS_ITF_STATE_EXEC_OK;
-
-	leds_error_toggle();  //LED1
 
 	memset(&cmd, 0, sizeof(cmd));
 	memset(&ans, 0, sizeof(ans));

@@ -15,7 +15,18 @@
 #include "stdint.h"
 #include "board.h"
  
+
+/* define a UART0 para o DAG ROOT e tambem ja habilita o
+ * ponto como dagroot (arquivo openserial flag rffflag)
+ * Neste caso a UART1 nao esta disponivel
+ */
+#ifdef SINK
 #define ENABLE_UART0_DAG   1 //TESTE RFF
+#define ENABLE_DAG_ROOT_ON_FIRST_TIME  1
+#else
+#define ENABLE_UART0_DAG   0 //TESTE RFF
+#define ENABLE_DAG_ROOT_ON_FIRST_TIME  0
+#endif
 
 //SENS_ITF UART1 PINS
 #define SENS_ITF_UART_BASE           UART1_BASE

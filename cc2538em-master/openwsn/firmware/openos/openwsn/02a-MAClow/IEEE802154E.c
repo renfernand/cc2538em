@@ -1916,10 +1916,15 @@ different channel offsets in the same slot.
 
 \returns The calculated frequency channel, an integer between 11 and 26.
 */
-port_INLINE uint8_t calculateFrequency(uint8_t channelOffset) {
+port_INLINE uint8_t calculateFrequency(uint8_t channelOffset)
+{
+   uint8_t u8Aux;
    // comment the following line out to disable channel hopping
-   return SYNCHRONIZING_CHANNEL; // single channel
-   //return 11+(ieee154e_vars.asnOffset+channelOffset)%16; //channel hopping
+   u8Aux =  SYNCHRONIZING_CHANNEL; // single channel
+
+   //u8Aux =  11+(ieee154e_vars.asnOffset+channelOffset)%16; //channel hopping
+
+   return u8Aux;
 }
 
 /**

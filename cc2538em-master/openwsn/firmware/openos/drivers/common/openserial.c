@@ -20,8 +20,12 @@
 #include "uart.h"
 #include "opentimers.h"
 #include "openhdlc.h"
+#include "openserial.h"
 
 //=========================== variables =======================================
+#if ENABLE_DAG_ROOT_ON_FIRST_TIME
+uint8_t rffflag;
+#endif
 
 openserial_vars_t openserial_vars;
 
@@ -48,6 +52,10 @@ void inputHdlcClose(void);
 void openserial_init() {
    uint16_t crc;
    
+#if ENABLE_DAG_ROOT_ON_FIRST_TIME
+   rffflag = 0;
+#endif
+
    // reset variable
    memset(&openserial_vars,0,sizeof(openserial_vars_t));
    
@@ -383,6 +391,17 @@ void openserial_stop() {
                                   (errorparameter_t)inputBufFill);
    }
    
+   //teste rff
+#if ENABLE_DAG_ROOT_ON_FIRST_TIME
+   //aqui habilita o mote como dagroot
+   if (rffflag == 0)
+   {
+	   rffflag = 1;
+	   idmanager_setIsDAGroot(TRUE);
+   }
+#endif
+   //teste rff
+
    if (busyReceiving == FALSE && inputBufFill>0) {
       DISABLE_INTERRUPTS();
       cmdByte = openserial_vars.inputBuf[0];
