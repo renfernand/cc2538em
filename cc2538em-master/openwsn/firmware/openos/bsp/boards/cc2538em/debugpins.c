@@ -9,7 +9,7 @@
 #include "gpio.h"
 #include "hw_types.h"
 #include "hw_memmap.h"
-#include "board_info.h"
+#include "board.h"
 
 //=========================== defines =========================================
 // Board dbPINS defines
@@ -42,7 +42,7 @@ void debugpins_init() {
 
 // PA4
 void debugpins_frame_toggle() {
-	bspDBpinToggle(BSP_PINA_BASE, BSP_PINA_4);
+   bspDBpinToggle(BSP_PINA_BASE, BSP_PINA_4);
 }
 void debugpins_frame_clr() {
     GPIOPinWrite(BSP_PINA_BASE, BSP_PINA_4, 0);

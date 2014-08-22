@@ -16,7 +16,7 @@
 #include "gpio.h"
 #include "hw_types.h"
 #include "hw_memmap.h"
-#include "board_info.h"
+#include "board.h"
 #include "ioc.h"
 #include "hw_ioc.h"
 #include "debugpins.h"
@@ -42,9 +42,16 @@ static void uart_isr_private(void);
 //=========================== public ==========================================
 
 void uart_init() {
+   register uint32_t i;
+   
    // reset local variables
    memset(&uart_vars,0,sizeof(uart_vars_t));
-
+   
+   // wait some time before initializing UART, since don't want the
+   // OpenMoteCC2538 to start generating data before the FTDI chip on the
+   // OpenBase or XBee Explorer has fully initialized
+   for(i=0;i<320000;i++);
+   
    // Disable UART function
    UARTDisable(UART0_BASE);
 

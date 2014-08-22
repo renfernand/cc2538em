@@ -13,18 +13,17 @@
 */
 
 #include "board_info.h"
-
-
+#include "toolchain_defs.h"
 /*Teste RFF
  * Flag para escolher entre o firmware do DAG_ROOT (SINK) e o MOTE
  * Quando for o mote deve ser comentado a linha abaixo
  */
-//#define SINK  1
+#define SINK 0
 
 
 //define the SENS_ITF UART or SPI : SPI --> USE_SPI_INTERFACE = 1 or UART --> USE_SPI_INTERFACE = 0
 #define USE_SPI_INTERFACE  0
-#define SENS_ITF_UART_INT  0
+#define OSENS_UART_INT  0
 
 //=========================== define ==========================================
 
@@ -32,16 +31,6 @@ typedef enum {
    DO_NOT_KICK_SCHEDULER,
    KICK_SCHEDULER,
 } kick_scheduler_t;
-
-#if defined(__GNUC__) && (__GNUC__==4)  && (__GNUC_MINOR__<=5) && defined(__MSP430__)
-   // mspgcc <4.5.x
-#include <signal.h>
-#define ISR(v) interrupt (v ## _VECTOR) v ## _ISR(void)
-#else
-   // other
-#define __PRAGMA__(x) _Pragma(#x)
-#define ISR(v) __PRAGMA__(vector=v ##_VECTOR) __interrupt void v ##_ISR(void)
-#endif
 
 // accelerometer sensor for the smartrf06 evaluation board
 #define  SENSOR_ACCEL  0   //enable accelerometer

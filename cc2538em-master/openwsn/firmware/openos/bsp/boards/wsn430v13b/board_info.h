@@ -17,26 +17,20 @@ to this board.
 
 //=========================== define ==========================================
 
-// (pre-)processor scpecific commands
-
-#define port_INLINE                         inline
-#define START_PACK(x) _Pragma(#x)
-#define END_PACK(x)   _Pragma(#x)
-
 //===== interrupt state
 
 #if defined(__GNUC__) && (__GNUC__==4)  && (__GNUC_MINOR__<=5) && defined(__MSP430__)
    // mspgcc <4.5.x
-#define INTERRUPT_DECLARATION()   unsigned short s;
-#define DISABLE_INTERRUPTS()      s = READ_SR&0x0008; \
-                                  __disable_interrupt();
-#define ENABLE_INTERRUPTS()       __asm__("bis %0,r2" : : "ir" ((uint16_t) s));
+   #define INTERRUPT_DECLARATION()          unsigned short s;
+   #define DISABLE_INTERRUPTS()             s = READ_SR&0x0008; \
+                                            __disable_interrupt();
+   #define ENABLE_INTERRUPTS()              __asm__("bis %0,r2" : : "ir" ((uint16_t) s));
 #else
    // other
-#define INTERRUPT_DECLARATION()   __istate_t s;
-#define DISABLE_INTERRUPTS()      s = __get_interrupt_state(); \
-                                   __disable_interrupt();
-#define ENABLE_INTERRUPTS()       __set_interrupt_state(s);
+   #define INTERRUPT_DECLARATION()          __istate_t s;
+   #define DISABLE_INTERRUPTS()             s = __get_interrupt_state(); \
+                                            __disable_interrupt();
+   #define ENABLE_INTERRUPTS()              __set_interrupt_state(s);
 #endif
 
 //===== timer

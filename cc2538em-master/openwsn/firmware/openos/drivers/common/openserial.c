@@ -8,7 +8,7 @@
 #include "openserial.h"
 #include "IEEE802154E.h"
 #include "neighbors.h"
-#include "res.h"
+#include "sixtop.h"
 #include "icmpv6echo.h"
 #include "idmanager.h"
 #include "openqueue.h"
@@ -23,9 +23,6 @@
 #include "openserial.h"
 
 //=========================== variables =======================================
-#if ENABLE_DAG_ROOT_ON_FIRST_TIME
-uint8_t rffflag;
-#endif
 
 openserial_vars_t openserial_vars;
 
@@ -52,10 +49,6 @@ void inputHdlcClose(void);
 void openserial_init() {
    uint16_t crc;
    
-#if ENABLE_DAG_ROOT_ON_FIRST_TIME
-   rffflag = 0;
-#endif
-
    // reset variable
    memset(&openserial_vars,0,sizeof(openserial_vars_t));
    
@@ -255,7 +248,7 @@ void openserial_startInput() {
       ENABLE_INTERRUPTS();
    }
    
-#if ENABLE_UART0_DAG
+
    uart_clearTxInterrupts();
    uart_clearRxInterrupts();      // clear possible pending interrupts
    uart_enableInterrupts();       // Enable USCI_A1 TX & RX interrupt
@@ -273,9 +266,8 @@ void openserial_startInput() {
 #else
    uart_writeByte(openserial_vars.reqFrame[openserial_vars.reqFrameIdx]);
 #endif
-
    ENABLE_INTERRUPTS();
-#endif //ENABLE_UART0_DAG
+
 }
 
 void openserial_startOutput() {
@@ -330,18 +322,21 @@ void openserial_startOutput() {
          if (debugPrint_neighbors()==TRUE) {
             break;
          }
+      case STATUS_KAPERIOD:
+         if (debugPrint_kaPeriod()==TRUE) {
+            break;
+         }
       default:
          DISABLE_INTERRUPTS();
          openserial_vars.debugPrintCounter=0;
          ENABLE_INTERRUPTS();
    }
    
-#if ENABLE_UART0_DAG
+
    // flush buffer
    uart_clearTxInterrupts();
    uart_clearRxInterrupts();          // clear possible pending interrupts
    uart_enableInterrupts();           // Enable USCI_A1 TX & RX interrupt
-
    DISABLE_INTERRUPTS();
    openserial_vars.mode=MODE_OUTPUT;
    if (openserial_vars.outputBufFilled) {
@@ -357,17 +352,16 @@ void openserial_startOutput() {
    } else {
       openserial_stop();
    }
-
    ENABLE_INTERRUPTS();
-#endif //ENABLE_UART0_DAG
+
 }
 
 void openserial_stop() {
+
+
    uint8_t inputBufFill;
    uint8_t cmdByte;
    bool busyReceiving;
-
-#if ENABLE_UART0_DAG
 
    INTERRUPT_DECLARATION();
    
@@ -378,7 +372,7 @@ void openserial_stop() {
    
    // disable USCI_A1 TX & RX interrupt
    uart_disableInterrupts();
-   uart1_disableInterrupts();   //SENS_ITF RFF
+
 
    DISABLE_INTERRUPTS();
    openserial_vars.mode=MODE_OFF;
@@ -391,17 +385,6 @@ void openserial_stop() {
                                   (errorparameter_t)inputBufFill);
    }
    
-   //teste rff
-#if ENABLE_DAG_ROOT_ON_FIRST_TIME
-   //aqui habilita o mote como dagroot
-   if (rffflag == 0)
-   {
-	   rffflag = 1;
-	   idmanager_setIsDAGroot(TRUE);
-   }
-#endif
-   //teste rff
-
    if (busyReceiving == FALSE && inputBufFill>0) {
       DISABLE_INTERRUPTS();
       cmdByte = openserial_vars.inputBuf[0];
@@ -445,7 +428,7 @@ void openserial_stop() {
    openserial_vars.inputBufFill  = 0;
    openserial_vars.busyReceiving = FALSE;
    ENABLE_INTERRUPTS();
-#endif
+
 }
 
 /**

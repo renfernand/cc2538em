@@ -15,8 +15,8 @@
 #define RPL_HOPBYHOP_HEADER_OPTION_TYPE  0x63
 
 enum {
-   PCKTFORWARD     = 1,
-   PCKTSEND        = 2,
+   PCKTFORWARD     = 1, // used by the node to indicate is forwarding a packet  -- either upstream or downstream
+   PCKTSEND        = 2, // used by the node to indicate is sending a packet
 };
 
 enum {
@@ -32,7 +32,7 @@ enum {
 
 As defined in http://tools.ietf.org/html/rfc6554#section-3.
 */
-START_PACK(pack(1));
+BEGIN_PACK
 typedef struct {
    uint8_t    nextHeader;    ///< Header immediately following.
    uint8_t    HdrExtLen;     ///< In 8-octet units, excluding first 8.
@@ -42,7 +42,7 @@ typedef struct {
    uint8_t    PadRes;        ///< Number of padding octets. Set to 0 if using EUI64.
    uint16_t   Reserved;      ///< Set to 0.
 } rpl_routing_ht;
-END_PACK(pack());
+END_PACK
 
 //=========================== variables =======================================
 

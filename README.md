@@ -3,6 +3,13 @@ cc2538em
 openwsn port for CC2538EM
 
 -------------------------------
+22_aug_2014
+renfernand:
+Merge with Marcelo version.
+Now is working the both serial UART0 e UART1 using only one firmware (without conditional compilation)
+
+
+-------------------------------
 09_aug_2014
 renfernand:
 1) Change the Baudrate from UART1 to 115200 and enable the CRC calculation

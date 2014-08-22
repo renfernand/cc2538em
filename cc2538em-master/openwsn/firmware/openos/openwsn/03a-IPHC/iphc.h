@@ -159,7 +159,7 @@ typedef struct {
 
 Described in http://tools.ietf.org/html/rfc6553#section-3
 */
-START_PACK(pack(1));
+BEGIN_PACK
 typedef struct {
    uint8_t    optionType;    ///< RPL_HOPBYHOP_HEADER_OPTION_TYPE
    uint8_t    optionLen;     ///< 8-bit field indicating the length of the option, in octets, excluding the Option Type and Opt Data Len fields.
@@ -167,7 +167,7 @@ typedef struct {
    uint8_t    rplInstanceID; ///< instanceid
    uint16_t   senderRank;    ///< RPL rank of the sender of the packet
 } rpl_option_ht;
-END_PACK(pack());
+END_PACK
 
 //=========================== variables =======================================
 
@@ -178,6 +178,7 @@ owerror_t     iphc_sendFromForwarding(
    OpenQueueEntry_t*    msg, 
    ipv6_header_iht*     ipv6_header, 
    rpl_option_ht*       rpl_option, 
+   uint32_t*            flow_label,
    uint8_t              fw_SendOrfw_Rcv
 );
 owerror_t     iphc_sendFromBridge(OpenQueueEntry_t *msg);

@@ -7,7 +7,6 @@
 #include "openwsn.h"
 //===== drivers
 #include "openserial.h"
-#include "sens_itf_mote.h"
 //===== stack
 //-- cross-layer
 #include "idmanager.h"
@@ -19,7 +18,7 @@
 #include "IEEE802154E.h"
 //-- 02b-RES
 #include "schedule.h"
-#include "res.h"
+#include "sixtop.h"
 #include "neighbors.h"
 //-- 03a-IPHC
 #include "openbridge.h"
@@ -36,6 +35,7 @@
 //===== applications
 //+++++ TCP
 //- debug
+#include "osens_app.h"
 #include "tcpecho.h"
 #include "tcpinject.h"
 #include "tcpprint.h"
@@ -50,7 +50,7 @@
 //- common
 //#include "udprand.h"
 //#include "udplatency.h"
-//#include "udpstorm.h"
+#include "udpstorm.h"
 //- board-specific
 //#include "imu.h"
 //+++++ CoAP
@@ -60,10 +60,9 @@
 #include "rleds.h"
 #include "rwellknown.h"
 #include "r6t.h"
-#include "rrt.h"
+//#include "rrt.h"
 //#include "rex.h"
 //#include "rrube.h"
-//#include "layerdebug.h"
 //- board-specific
 //#include "rheli.h"
 //#include "rt.h"
@@ -96,7 +95,7 @@ void openwsn_init() {
    ieee154e_init();
    //-- 02b-RES
    schedule_init();
-   res_init();
+   sixtop_init();
    neighbors_init();
    //-- 03a-IPHC
    openbridge_init();
@@ -128,19 +127,19 @@ void openwsn_init() {
    //- common
    //udprand_init();
    //udplatency_init();
-   //udpstorm_init();
+   udpstorm_init();
    //- board-specific
    //imu_init();
-
    //+++++ CoAP
    //- debug
    //- core
    //- common
    rinfo_init();
-   rrt_init();
+   //rrt_init();
    rleds__init();
    rwellknown_init();
    r6t_init();
+   osens_app_init();
    //rreg_init();
    //rex_init();
    //rrube_init();
@@ -149,10 +148,6 @@ void openwsn_init() {
    //rheli_init();
    //rt_init();
    //rxl1_init();
-
-   //rff
-   //cc2538em_accel_init();
-   sens_itf_mote_init();
    
    openserial_printInfo(
       COMPONENT_OPENWSN,ERR_BOOTED,
