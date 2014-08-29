@@ -3,6 +3,11 @@ cc2538em
 openwsn port for CC2538EM
 
 -------------------------------
+29_aug_2014
+renfernand:
+Version that include the osens and fix problems to run the simulator.
+
+-------------------------------
 22_aug_2014
 renfernand:
 Merge with Marcelo version.
