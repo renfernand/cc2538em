@@ -4,7 +4,7 @@ DO NOT EDIT DIRECTLY!!
 This file was 'objectified' by SCons as a pre-processing
 step for the building a Python extension module.
 
-This was done on 2014-08-18 21:09:52.537000.
+This was done on 2014-08-28 21:28:23.762000.
 */
 /**
 \brief Source code of the Python openwsn module, written in C.
@@ -61,6 +61,10 @@ static PyObject* OpenMote_getState(OpenMote* self) {
    PyObject* radiotimer_icb_overflow_cb;
    PyObject* radiotimer_icb_compare_cb;
    PyObject* ohlone_vars;
+   
+   PyObject* osens_desc_vars;
+   PyObject* osens_val_vars;
+
    PyObject* tcpinject_vars;
    PyObject* icmpv6echo_vars;
    PyObject* icmpv6rpl_vars;
@@ -103,7 +107,16 @@ static PyObject* OpenMote_getState(OpenMote* self) {
    ohlone_vars = PyDict_New();
    // TODO
    PyDict_SetItemString(returnVal, "ohlone_vars", ohlone_vars);
-   
+
+   // osens_desc_vars
+   osens_desc_vars = PyDict_New();
+   // TODO
+   PyDict_SetItemString(returnVal, "osens_desc_vars", osens_desc_vars);
+   // osens_val_vars
+   osens_val_vars = PyDict_New();
+   // TODO
+   PyDict_SetItemString(returnVal, "osens_val_vars", osens_val_vars);
+      
    // tcpinject_vars
    tcpinject_vars = PyDict_New();
    // TODO

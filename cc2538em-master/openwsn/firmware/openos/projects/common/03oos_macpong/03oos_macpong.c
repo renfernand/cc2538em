@@ -136,6 +136,7 @@ void opencoap_init(void)          { return; }
 //===== L7
 
 void ohlone_init(void)            { return; }
+void osens_app_init(void)         { return; }
 
 void tcpecho_init(void)           { return; }
 
