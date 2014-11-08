@@ -2,6 +2,17 @@ cc2538em
 ========
 openwsn port for CC2538EM
 
+----------------------------------------
+08_nov_2014
+renfernand:
+Update OSENS
+Alteracoes:
+Para ficar compativel com o ultimo firmware de berkley fiz o merge entre a ultima versao 
+que tinhamos com o versao de berkley.
+Arquivos alterados:
+ - uart.h - inclusao dos defines.
+ 
+
 -------------------------------
 09_aug_2014
 renfernand:
