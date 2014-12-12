@@ -13,7 +13,8 @@
 */
 
 //=========================== define ==========================================
-
+//enable the log using UART0 - cannot be used for DAG ROOT
+#define DEBUG_VIA_SERIAL 0
 //=========================== typedef =========================================
 
 //=========================== variables =======================================
@@ -59,6 +60,15 @@ void debugpins_syncAck_set(void);
 void debugpins_debug_clr(void);
 void debugpins_debug_set(void);
 #endif
+
+void UARTprintf(const char *pcString, ...);
+
+#define DBG_LOG(g, msg) \
+do{\
+  if( (g) ){ \
+	UARTprintf msg; \
+  } \
+}while(0)
 
 /**
 \}
