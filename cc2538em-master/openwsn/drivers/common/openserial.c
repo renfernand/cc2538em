@@ -18,7 +18,7 @@
 #include "uart.h"
 #include "opentimers.h"
 #include "openhdlc.h"
-
+#include "debugpins.h"
 //=========================== variables =======================================
 
 openserial_vars_t openserial_vars;
@@ -260,7 +260,9 @@ void openserial_startInput() {
    );
    openserial_vars.reqFrameIdx = sizeof(openserial_vars.reqFrame);
 #else
+#if ( DEBUG_VIA_SERIAL == 0)
    uart_writeByte(openserial_vars.reqFrame[openserial_vars.reqFrameIdx]);
+#endif
 #endif
    ENABLE_INTERRUPTS();
 }
@@ -341,7 +343,9 @@ void openserial_startOutput() {
          &openserial_vars.outputBufIdxW
       );
 #else
+#if ( DEBUG_VIA_SERIAL == 0)
       uart_writeByte(openserial_vars.outputBuf[openserial_vars.outputBufIdxR++]);
+#endif
 #endif
    } else {
       openserial_stop();
@@ -538,17 +542,21 @@ void isr_openserial_tx() {
    switch (openserial_vars.mode) {
       case MODE_INPUT:
          openserial_vars.reqFrameIdx++;
+#if (DEBUG_VIA_SERIAL == 0)
          if (openserial_vars.reqFrameIdx<sizeof(openserial_vars.reqFrame)) {
             uart_writeByte(openserial_vars.reqFrame[openserial_vars.reqFrameIdx]);
          }
+#endif
          break;
       case MODE_OUTPUT:
          if (openserial_vars.outputBufIdxW==openserial_vars.outputBufIdxR) {
             openserial_vars.outputBufFilled = FALSE;
          }
+#if (DEBUG_VIA_SERIAL == 0)
          if (openserial_vars.outputBufFilled) {
             uart_writeByte(openserial_vars.outputBuf[openserial_vars.outputBufIdxR++]);
          }
+#endif
          break;
       case MODE_OFF:
       default:

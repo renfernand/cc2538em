@@ -15,7 +15,10 @@
 #include "techo.h"
 // UDP
 #include "uecho.h"
+// OSENS
+#include "osens_app.h"
 
+#define DAGROOT_ENABLE_ONSTARTUP  0   // RFF
 //=========================== variables =======================================
 
 //=========================== prototypes ======================================
@@ -34,4 +37,16 @@ void openapps_init(void) {
    techo_init();
    // UDP
    uecho_init();
+   //sensor board
+   osens_app_init();
+
+   //teste rff
+#if DAGROOT_ENABLE_ONSTARTUP
+   idmanager_setIsDAGroot(TRUE);
+   idmanager_setIsBridge(TRUE);
+#endif
+   //teste rff
+
+
+
 }

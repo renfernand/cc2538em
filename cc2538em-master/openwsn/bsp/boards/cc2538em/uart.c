@@ -76,10 +76,15 @@ void uart_init() {
    // This function uses SysCtrlClockGet() to get the system clock
    // frequency.  This could be also be a variable or hard coded value
    // instead of a function call.
+#if (DEBUG_VIA_SERIAL == 1)
+   UARTConfigSetExpClk(UART0_BASE, SysCtrlIOClockGet(), 9600,
+                      (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
+                       UART_CONFIG_PAR_NONE));
+#else
    UARTConfigSetExpClk(UART0_BASE, SysCtrlIOClockGet(), 115200,
                       (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
                        UART_CONFIG_PAR_NONE));
-
+#endif
    // Enable UART hardware
    UARTEnable(UART0_BASE);
 
@@ -187,7 +192,7 @@ void uart1_init() {
 	IOCPinConfigPeriphInput  (OSENS_UART_BUS_BASE, OSENS_UART_RXD, OSENS_MUX_UART_RXD);
 	GPIOPinTypeUARTInput     (OSENS_UART_BUS_BASE, OSENS_UART_RXD);
 
-   UARTConfigSetExpClk(OSENS_UART_BASE, SysCtrlIOClockGet(), 115200,
+   UARTConfigSetExpClk(OSENS_UART_BASE, SysCtrlIOClockGet(), 9600,
                       (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
 
    UARTEnable(OSENS_UART_BASE);

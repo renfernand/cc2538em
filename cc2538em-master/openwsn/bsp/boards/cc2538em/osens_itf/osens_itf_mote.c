@@ -17,11 +17,23 @@
 #include "uarthal.h"
 #include "leds.h"
 #include "uart.h"
-
+#include "debugpins.h"
+#if ((MYLINKXS_REMOTE_CONTROL == 1) || (MYLINKXS_LIGHT_CONTROL == 1))
+#include "mylinkxs.h"
+#endif
 #define TRACE_ON 0
 
 // minimum tick time is 1
 #define MS2TICK(ms) (ms) > OSENS_SM_TICK_MS ? (ms) / OSENS_SM_TICK_MS : 1
+
+#define DBG_READ  0
+#define DBG_WRITE 1
+
+#if (MYLINKXS_REMOTE_CONTROL == 1)
+uint8_t flagwriteenable=0;
+void simula_envio_cmd(osens_point_t *pt);
+
+#endif
 
 enum {
     OSENS_STATE_INIT = 0,
@@ -197,17 +209,11 @@ static void osens_mote_show_values(void)
 }
 #endif
 
-uint8_t osens_mote_init(void)
-{
 
-	memset(&sm_state, 0, sizeof(osens_mote_sm_state_t));
-	sm_state.state = OSENS_STATE_INIT;
 
-	//buBufFlush();
-    opentimers_start(OSENS_SM_TICK_MS, TIMER_PERIODIC, TIME_MS, (opentimers_cbt) osens_mote_tick);
 
-    return 0;
-}
+
+
 
 
 static uint8_t osens_mote_pack_send_frame(osens_cmd_req_t *cmd, uint8_t cmd_size)
@@ -219,8 +225,22 @@ static uint8_t osens_mote_pack_send_frame(osens_cmd_req_t *cmd, uint8_t cmd_size
     if (size != cmd_size)
         return OSENS_STATE_EXEC_ERROR;
 
+#if (MYLINKXS_REMOTE_CONTROL == 1)
+    //Devido ao arduino estou colocando um byte a mais de final de frame 'Z'=0x5A
+	frame[cmd_size] = BYTE_END_FRAME;
+	cmd_size++;
+
+    DBG_LOG(DBG_READ,("Req=%x %x %x %x\n",frame[0],frame[1],frame[2],frame[3]));
+
+
+    osens_mote_send_frame(frame, cmd_size);
+
+
+
+#else
     if (osens_mote_send_frame(frame, cmd_size) != cmd_size)
     	return OSENS_STATE_EXEC_ERROR;
+#endif
 
     return OSENS_STATE_EXEC_OK;
 }
@@ -234,14 +254,22 @@ static uint8_t osens_mote_sm_func_pt_val_ans(osens_mote_sm_state_t *st)
     point = schedule.scan.index[st->point_index];
     ans_size = 6 + datatype_sizes[sensor_points.points[point].desc.type];
 
-    size = osens_unpack_cmd_res(&ans, frame, ans_size);
-
+#if (MYLINKXS_REMOTE_CONTROL == 0)
     // retry ?
     if (size != ans_size || ans.hdr.addr != (OSENS_REGMAP_READ_POINT_DATA_1 + point))
         return OSENS_STATE_EXEC_OK;
 
     // ok, save and go to the next
+    size = osens_unpack_cmd_res(&ans, frame, ans_size);
     memcpy(&sensor_points.points[point].value, &ans.payload.point_value_cmd, sizeof(osens_point_t));
+#else
+    size = osens_unpack_cmd_res(&ans, frame, ans_size);
+    memcpy(&sensor_points.points[point].value, &ans.payload.point_value_cmd, sizeof(osens_point_t));
+
+    DBG_LOG(DBG_READ,("Res=%d %s %x \n",point,sensor_points.points[point].desc.name, sensor_points.points[point].value.value.u16));
+	leds_error_toggle();
+
+#endif  // if (MYLINKXS_REMOTE_CONTROL == 0)
 
     st->retries = 0;
     st->point_index++;
@@ -253,9 +281,19 @@ static uint8_t osens_mote_sm_func_pt_val_ans(osens_mote_sm_state_t *st)
     return OSENS_STATE_EXEC_OK;
 }
 
+#if MYLINKXS_REMOTE_CONTROL
+
+void simula_envio_cmd(osens_point_t *pt)
+{
+    flagwriteenable = 1;
+}
+#endif
+
 static uint8_t osens_mote_sm_func_req_pt_val(osens_mote_sm_state_t *st)
 {
-    uint8_t point;
+    uint8_t point,uc;
+	uint8_t ucBotao=0;
+	osens_point_t pt;
 
 	// end of point reading
     if(st->point_index >= schedule.scan.num_of_points)
@@ -270,10 +308,24 @@ static uint8_t osens_mote_sm_func_req_pt_val(osens_mote_sm_state_t *st)
     cmd.hdr.addr = OSENS_REGMAP_READ_POINT_DATA_1 + point;
     st->trmout_counter = 0;
     st->trmout = MS2TICK(5000);
+
+#if MYLINKXS_REMOTE_CONTROL
+	//PROVISORIO!!!!
+	ucBotao = GPIOPinRead(GPIO_A_BASE, GPIO_PIN_3);
+	if ((ucBotao & GPIO_PIN_3) == 0) {
+		pt.type = OSENS_DT_U16;
+		pt.value.u16 = 0x820;
+		sm_state.state = OSENS_STATE_WR_PT;
+		simula_envio_cmd(&pt);
+		osens_set_pvalue(0,&pt);
+	}
+#endif
+
     return osens_mote_pack_send_frame(&cmd, 4);
 
 }
 
+#if 0
 static uint8_t osens_mote_sm_func_proc_wr_pt(osens_mote_sm_state_t *st)
 {
 	uint8_t point;
@@ -282,11 +334,19 @@ static uint8_t osens_mote_sm_func_proc_wr_pt(osens_mote_sm_state_t *st)
 
     point = schedule.write.index[st->point_index];
 
-    size = osens_unpack_cmd_res(&ans, frame, ans_size);
+#if (MYLINKXS_REMOTE_CONTROL == 1)
+   if(flagwriteenable)
+   {
+	   flagwriteenable = 0;
+	   st->retries = 0;
+   }
+#endif
 
-    // retry ?
-    if (size != ans_size || ans.hdr.addr != (OSENS_REGMAP_WRITE_POINT_DATA_1 + point))
-        return OSENS_STATE_EXEC_OK;
+   size = osens_unpack_cmd_res(&ans, frame, ans_size);
+
+	// retry ?
+	if (size != ans_size || ans.hdr.addr != (OSENS_REGMAP_WRITE_POINT_DATA_1 + point))
+		return OSENS_STATE_EXEC_OK;
 
     // ok,  go to the next
     schedule.write.cons = PC_INC_QUEUE(schedule.write.cons, OSENS_MAX_POINTS);
@@ -294,6 +354,39 @@ static uint8_t osens_mote_sm_func_proc_wr_pt(osens_mote_sm_state_t *st)
 
     return OSENS_STATE_EXEC_OK;
 }
+#else
+static uint8_t osens_mote_sm_func_proc_wr_pt(osens_mote_sm_state_t *st)
+{
+	uint8_t point;
+	uint8_t size;
+	uint8_t ans_size = 5;
+
+    point = schedule.write.index[st->point_index];
+#if (MYLINKXS_REMOTE_CONTROL == 1)
+   if(flagwriteenable)
+   {
+	   flagwriteenable = 0;
+	   st->retries = 0;
+   }
+#endif
+
+   size = osens_unpack_cmd_res(&ans, frame, ans_size);
+
+    // retry ?
+    if (size != ans_size || ans.hdr.addr != (OSENS_REGMAP_WRITE_POINT_DATA_1 + point))
+    {
+	   DBG_LOG(DBG_WRITE,("WrRes ERROR I:%x R:%x L:%x PAR:%x \n",st->point_index,st->retries,size,ans.hdr.addr));
+       return OSENS_STATE_EXEC_OK;
+    }
+
+    // ok,  go to the next
+    DBG_LOG(DBG_WRITE,("WrRes OK I:%x R:%x L:%x PAR:%x \n",st->point_index,st->retries,size,ans.hdr.addr));
+    schedule.write.cons = PC_INC_QUEUE(schedule.write.cons, OSENS_MAX_POINTS);
+    st->retries = 0;
+
+    return OSENS_STATE_EXEC_OK;
+}
+#endif
 
 static uint8_t osens_mote_sm_func_wr_pt(osens_mote_sm_state_t *st)
 {
@@ -302,6 +395,9 @@ static uint8_t osens_mote_sm_func_wr_pt(osens_mote_sm_state_t *st)
 	uint8_t p = schedule.write.prod;
 	uint8_t size;
 
+	leds_debug_toggle();
+
+    DBG_LOG(0,("WrReq0=%x %x %x\n",c,p,st->retries));
 	// end of point writing
 	if(c == p)
 		return OSENS_STATE_EXEC_WAIT_ABORT;
@@ -324,6 +420,8 @@ static uint8_t osens_mote_sm_func_wr_pt(osens_mote_sm_state_t *st)
     size = 5 + datatype_sizes[sensor_points.points[point].desc.type];
     memcpy(&cmd.payload.point_value_cmd, &sensor_points.points[point].value, sizeof(osens_point_t));
 
+    DBG_LOG(DBG_WRITE,("WrReq I:%x T:%x V:%x\n",point, sensor_points.points[point].desc.type, sensor_points.points[point].value.value.u16));
+
     return osens_mote_pack_send_frame(&cmd,size);
 }
 
@@ -331,11 +429,11 @@ static uint8_t osens_mote_sm_func_run_sch(osens_mote_sm_state_t *st)
 {
     uint8_t n;
 
-    leds_error_toggle();
-
 	// priorize writings over data scan/schedule execution
 	if(schedule.write.prod != schedule.write.cons)
 	{
+	    DBG_LOG(DBG_WRITE,("NewWr P:%d C:%d \n",schedule.write.prod,schedule.write.cons));
+
 #if TRACE_ON == 1
         printf("==> New writing item to be consumed (P: %d <> C: d%)\n", schedule.write.prod, schedule.write.cons);
 #endif
@@ -356,6 +454,8 @@ static uint8_t osens_mote_sm_func_run_sch(osens_mote_sm_state_t *st)
             // n: point index in the schedule database
             // index: point index in the points database
             uint8_t index = schedule.points[n].index;
+
+    	    DBG_LOG(0,("Sch n:%d idx:%d \n",n,schedule.points[n].index));
 
             schedule.scan.index[schedule.scan.num_of_points] = index;
         	schedule.scan.num_of_points++;
@@ -586,8 +686,11 @@ static uint8_t osens_mote_sm_func_req_ver(osens_mote_sm_state_t *st)
 static uint8_t osens_mote_sm_func_init(osens_mote_sm_state_t *st)
 {
 	uint8_t ret = OSENS_STATE_EXEC_OK;
+	uint8_t pointpos=0;
 
 	leds_error_on();
+
+	DBG_LOG(1,("INIT \n"));
 
 	memset(&cmd, 0, sizeof(cmd));
 	memset(&ans, 0, sizeof(ans));
@@ -597,6 +700,66 @@ static uint8_t osens_mote_sm_func_init(osens_mote_sm_state_t *st)
 	memset(st, 0, sizeof(osens_mote_sm_state_t));
 
 	num_rx_bytes=0;
+
+
+#if MYLINKXS_REMOTE_CONTROL
+    strcpy((void *)board_info.model, (void *) "ARDUINO");
+    strcpy((void *)board_info.manufactor,(void *) "ARDUINO");
+    board_info.sensor_id = 0x1;
+    board_info.hardware_revision = 0x01;
+    board_info.num_of_points = 5;
+    board_info.capabilities = 0;
+
+    sensor_points.num_of_points = 5;
+    pointpos=0;
+    strcpy((char *)sensor_points.points[pointpos].desc.name, "CTR1ONOFF");
+    sensor_points.points[pointpos].desc.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].desc.unit = 0; // TDB
+    sensor_points.points[pointpos].desc.access_rights = SENS_ITF_ACCESS_READ_WRITE;
+    sensor_points.points[pointpos].desc.sampling_time_x250ms = 1;
+    sensor_points.points[pointpos].value.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].value.value.u16 = 0;
+
+    pointpos++;
+    strcpy((char *)sensor_points.points[pointpos].desc.name, "CTR2_PP");
+    sensor_points.points[pointpos].desc.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].desc.unit = 0; // TDB
+    sensor_points.points[pointpos].desc.access_rights = SENS_ITF_ACCESS_READ_WRITE;
+    sensor_points.points[pointpos].desc.sampling_time_x250ms = 1;
+    sensor_points.points[pointpos].value.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].value.value.u16 = 0;
+
+    pointpos++;
+    strcpy((char *)sensor_points.points[pointpos].desc.name, "CTR2_MM");
+    sensor_points.points[pointpos].desc.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].desc.unit = 0; // TDB
+    sensor_points.points[pointpos].desc.access_rights = SENS_ITF_ACCESS_READ_WRITE;
+    sensor_points.points[pointpos].desc.sampling_time_x250ms = 1;
+    sensor_points.points[pointpos].value.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].value.value.u16 = 0;
+
+    pointpos++;
+    strcpy((char *)sensor_points.points[pointpos].desc.name, "CTR3_PP");
+    sensor_points.points[pointpos].desc.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].desc.unit = 0; // TDB
+    sensor_points.points[pointpos].desc.access_rights = SENS_ITF_ACCESS_READ_WRITE;
+    sensor_points.points[pointpos].desc.sampling_time_x250ms = 1;
+    sensor_points.points[pointpos].value.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].value.value.u16 = 0;
+
+    pointpos++;
+    strcpy((char *)sensor_points.points[pointpos].desc.name, "CTR3_MM");
+    sensor_points.points[pointpos].desc.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].desc.unit = 0; // TDB
+    sensor_points.points[pointpos].desc.access_rights = SENS_ITF_ACCESS_READ_WRITE;
+    sensor_points.points[pointpos].desc.sampling_time_x250ms = 1;
+    sensor_points.points[pointpos].value.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].value.value.u16 = 0;
+
+#endif
+
+
+
 
 	return ret;
 }
@@ -661,12 +824,34 @@ void osens_mote_sm(void)
 #endif
 
 }
-
 static void osens_mote_tick(void)
 {
     scheduler_push_task((task_cbt) osens_mote_sm, TASKPRIO_OSENS_MAIN);
 }
 
+#if MYLINKXS_REMOTE_CONTROL
+const osens_mote_sm_table_t osens_mote_sm_table[] =
+{     //{ func,                                next_state,                   abort_state,              error_state       }
+		{ osens_mote_sm_func_init,             OSENS_STATE_BUILD_SCH,        OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_INIT
+		{ osens_mote_sm_func_req_ver,          OSENS_STATE_WAIT_ITF_VER_ANS, OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_SEND_ITF_VER
+		{ osens_mote_sm_func_wait_ans,         OSENS_STATE_PROC_ITF_VER,     OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_WAIT_ITF_VER_ANS
+		{ osens_mote_sm_func_proc_itf_ver_ans, OSENS_STATE_SEND_BRD_ID,      OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_PROC_ITF_VER
+		{ osens_mote_sm_func_req_brd_id,       OSENS_STATE_WAIT_BRD_ID_ANS,  OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_SEND_BRD_ID
+		{ osens_mote_sm_func_wait_ans,         OSENS_STATE_PROC_BRD_ID,      OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_WAIT_BRD_ID_ANS
+		{ osens_mote_sm_func_proc_brd_id_ans,  OSENS_STATE_SEND_PT_DESC,     OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_PROC_BRD_ID
+		{ osens_mote_sm_func_req_pt_desc,      OSENS_STATE_WAIT_PT_DESC_ANS, OSENS_STATE_BUILD_SCH,    OSENS_STATE_INIT  }, // OSENS_STATE_SEND_PT_DESC
+        { osens_mote_sm_func_wait_ans,         OSENS_STATE_PROC_PT_DESC,     OSENS_STATE_SEND_PT_DESC, OSENS_STATE_INIT  }, // OSENS_STATE_WAIT_PT_DESC_ANS
+		{ osens_mote_sm_func_pt_desc_ans,      OSENS_STATE_SEND_PT_DESC,     OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_PROC_PT_DESC
+		{ osens_mote_sm_func_build_sch,        OSENS_STATE_RUN_SCH,          OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_BUILD_SCH
+		{ osens_mote_sm_func_run_sch,          OSENS_STATE_RUN_SCH,          OSENS_STATE_SEND_PT_VAL,  OSENS_STATE_WR_PT }, // OSENS_STATE_RUN_SCH
+		{ osens_mote_sm_func_req_pt_val,       OSENS_STATE_WAIT_PT_VAL_ANS,  OSENS_STATE_RUN_SCH,      OSENS_STATE_INIT  }, // OSENS_STATE_SEND_PT_VAL
+		{ osens_mote_sm_func_wait_ans,         OSENS_STATE_PROC_PT_VAL,      OSENS_STATE_SEND_PT_VAL,  OSENS_STATE_INIT  }, // OSENS_STATE_WAIT_PT_VAL_ANS
+		{ osens_mote_sm_func_pt_val_ans,       OSENS_STATE_SEND_PT_VAL,      OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_PROC_PT_VAL
+		{ osens_mote_sm_func_wr_pt,            OSENS_STATE_WAIT_WR_PT_ANS,   OSENS_STATE_RUN_SCH,      OSENS_STATE_INIT  }, // OSENS_STATE_WR_PT
+		{ osens_mote_sm_func_wait_ans,         OSENS_STATE_PROC_WR_PT_ANS,   OSENS_STATE_WR_PT,        OSENS_STATE_INIT  }, // OSENS_STATE_WAIT_WR_PT_ANS
+		{ osens_mote_sm_func_proc_wr_pt,       OSENS_STATE_WR_PT,            OSENS_STATE_INIT,         OSENS_STATE_INIT } // OSENS_STATE_PROC_WR_PT_ANS
+};
+#else
 const osens_mote_sm_table_t osens_mote_sm_table[] =
 {     //{ func,                                next_state,                   abort_state,              error_state       }
 		{ osens_mote_sm_func_init,             OSENS_STATE_SEND_ITF_VER,     OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_INIT
@@ -688,65 +873,197 @@ const osens_mote_sm_table_t osens_mote_sm_table[] =
 		{ osens_mote_sm_func_wait_ans,         OSENS_STATE_PROC_WR_PT_ANS,   OSENS_STATE_WR_PT,        OSENS_STATE_INIT  }, // OSENS_STATE_WAIT_WR_PT_ANS
 		{ osens_mote_sm_func_proc_wr_pt,       OSENS_STATE_WR_PT,            OSENS_STATE_INIT,         OSENS_STATE_INIT } // OSENS_STATE_PROC_WR_PT_ANS
 };
+#endif
+
+#if (MYLINKXS_SENSORS == 1)
+
+
+#if MYLINKXS_LIGHT_CONTROL
+uint8_t osens_init(void)
+{
+	//configura os ios do sensor
+	light_init();
+
+	//configura o profile do sensor
+	leds_error_on();
+
+	memset(&cmd, 0, sizeof(cmd));
+	memset(&ans, 0, sizeof(ans));
+    memset(&sensor_points, 0, sizeof(sensor_points));
+	memset(&board_info, 0, sizeof(board_info));
+	memset(&schedule, 0, sizeof(schedule));
+
+    strcpy((void *)board_info.model, (void *) "CC2538EM_");
+    strcpy((void *)board_info.manufactor,(void *) "TexasInstr");
+    board_info.sensor_id = 0x1;
+    board_info.hardware_revision = 0x01;
+    board_info.num_of_points = 1;
+    board_info.capabilities = 0;
+
+    sensor_points.points[0].desc.type = 1;
+    sensor_points.points[0].desc.type = 1;
+
+    strcpy((char *)sensor_points.points[0].desc.name, "LIGHT");
+    sensor_points.points[0].desc.type = SENS_ITF_DT_U8;
+    sensor_points.points[0].desc.unit = 0; // TDB
+    sensor_points.points[0].desc.access_rights = SENS_ITF_ACCESS_READ_WRITE;
+    sensor_points.points[0].desc.sampling_time_x250ms = 1;
+    sensor_points.points[0].value.type = SENS_ITF_DT_U8;
+    sensor_points.points[0].value.value.u8 = 10;
+    sensor_points.num_of_points = 1;
+
+	osens_mote_init();
+
+	return 0;
+}
+
+
+static void light_mote_tick(void)
+{
+	scheduler_push_task((task_cbt) light_mote_sm, TASKPRIO_OSENS_MAIN);
+}
+
+uint8_t osens_mote_init(void)
+	{
+
+	//Inicializo a maquina de estado como ja rodando pois profile é fixo
+	memset(&sm_state, 0, sizeof(osens_mote_sm_state_t));
+	sm_state.state = OSENS_STATE_RUN_SCH;
+
+	//buBufFlush();
+	opentimers_start(OSENS_SM_TICK_MS, TIMER_PERIODIC, TIME_MS, (opentimers_cbt) light_mote_tick);
+
+		return 0;
+}
+
+uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
+{
+	// switch on the light pulse (50 ms)
+	light_on();
+
+	opentimers_start(1000,TIMER_ONESHOT,TIME_MS,light_timer);
+
+		return 1;
+	}
+
+
+#endif
+
+#if MYLINKXS_REMOTE_CONTROL
+
+void control_mote_sm(void)
+{
+	osens_cmd_req_t cmd;
+
+    cmd.hdr.addr = OSENS_REGMAP_READ_POINT_DATA_1;
+
+    sensor_points.points[0].value.type  = 0;
+
+    memcpy(&cmd.payload.point_value_cmd, &sensor_points.points[point].value, sizeof(osens_point_t));
+
+    osens_mote_pack_send_frame(&cmd,4);
+
+    //sensor_points.points[0].value.value.u8 = light_get_value();
+}
+
+
+static void control_mote_tick(void)
+{
+    scheduler_push_task((task_cbt) control_mote_sm, TASKPRIO_OSENS_MAIN);
+}
+
+
+uint8_t osens_mote_init(void)
+	{
+
+    //Inicializo a maquina de estado como ja rodando pois profile é fixo
+	memset(&sm_state, 0, sizeof(osens_mote_sm_state_t));
+	sm_state.state = OSENS_STATE_RUN_SCH;
+
+    opentimers_start(OSENS_SM_TICK_MS, TIMER_PERIODIC, TIME_MS, (opentimers_cbt) control_mote_tick);
+
+		return 0;
+}
+
+
+
+/*
+ * Envia o comando diretamente na serial..
+ * Espera uma resposta.
+ */
+uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
+{
+    cmd.hdr.addr = OSENS_REGMAP_READ_POINT_DATA_1 + point;
+    //st->trmout_counter = 0;
+    //st->trmout = MS2TICK(5000);
+    cmd.payload.command_cmd.cmd[0] = 0x20;
+    cmd.payload.command_cmd.cmd[1] = 0x21;
+    cmd.payload.command_cmd.cmd[2] = 0x22;
+    cmd.payload.command_cmd.cmd[3] = 0x23;
+
+    return osens_mote_pack_send_frame(&cmd, 4);
+
+
+	return 1;
+}
+
+
+static uint8_t osens_mote_sm_func_req_pt_val(osens_mote_sm_state_t *st)
+	{
+    uint8_t point;
+
+	// end of point reading
+    if(st->point_index >= schedule.scan.num_of_points)
+    	return OSENS_STATE_EXEC_WAIT_ABORT;
+
+    // error condition after 3 retries
+	st->retries++;
+	if(st->retries > 3)
+		return OSENS_STATE_EXEC_ERROR;
+
+	point = schedule.scan.index[st->point_index];
+    cmd.hdr.addr = OSENS_REGMAP_READ_POINT_DATA_1 + point;
+    st->trmout_counter = 0;
+    st->trmout = MS2TICK(5000);
+    return osens_mote_pack_send_frame(&cmd, 4);
+
+	}
+
+
+#endif
+
+
+
+
+#else
+
 
 uint8_t osens_init(void)
 {
 	osens_mote_init();
+
+
 	return 0;
 }
 
-uint8_t osens_get_num_points(void)
+uint8_t osens_mote_init(void)
 {
-	if(sm_state.state >= OSENS_STATE_SEND_PT_DESC)
-	{
-		return board_info.num_of_points;
-	}
-	else
+
+	memset(&sm_state, 0, sizeof(osens_mote_sm_state_t));
+	sm_state.state = OSENS_STATE_INIT;
+
+#if MYLINKXS_REMOTE_CONTROL
+    //config botao PROVISORIO!!! SO PARA TESTE
+	GPIOPinTypeGPIOInput(BSP_LIGHT_BOTAO_BASE,BSP_LIGHT_BOTAO);
+	IOCPadConfigSet(BSP_LIGHT_BOTAO_BASE, BSP_LIGHT_BOTAO, IOC_OVERRIDE_PUE);
+#endif
+
+	//buBufFlush();
+    opentimers_start(OSENS_SM_TICK_MS, TIMER_PERIODIC, TIME_MS, (opentimers_cbt) osens_mote_tick);
+
 		return 0;
 }
 
-uint8_t osens_get_brd_desc(osens_brd_id_t *brd)
-{
-	if(sm_state.state >= OSENS_STATE_SEND_PT_DESC)
-	{
-		memcpy(brd,&board_info,sizeof(osens_brd_id_t));
-		return 1;
-	}
-	else
-		return 0;
-}
-
-uint8_t osens_get_pdesc(uint8_t index, osens_point_desc_t *desc)
-{
-	if((sm_state.state >= OSENS_STATE_RUN_SCH) && (index < sensor_points.num_of_points))
-	{
-		memcpy(desc,&sensor_points.points[index].desc,sizeof(osens_point_desc_t));
-		return 1;
-	}
-	else
-		return 0;
-}
-
-int8_t osens_get_ptype(uint8_t index)
-{
-	if((sm_state.state >= OSENS_STATE_RUN_SCH) && (index < sensor_points.num_of_points))
-	{
-		return sensor_points.points[index].value.type;
-	}
-	else
-		return -1;
-}
-
-uint8_t osens_get_point(uint8_t index, osens_point_t *point)
-{
-	if((sm_state.state >= OSENS_STATE_RUN_SCH) && (index < sensor_points.num_of_points))
-	{
-		memcpy(point,&sensor_points.points[index].value,sizeof(osens_point_t));
-		return 1;
-	}
-	else
-		return 0;
-}
 
 uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
 {
@@ -766,6 +1083,7 @@ uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
 #if TRACE_ON == 1
                 printf("==> No space in writing queue (P: %d->%d, C: %d)\n",p,pn,c);
 #endif
+    		    DBG_LOG(DBG_WRITE,("QueueFull (P: %d->%d, C: %d)\n",p,pn,c));
 				return 0;
             }
 
@@ -773,12 +1091,17 @@ uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
             printf("==> Producing at position %d\n", p);
 #endif
 			// schedule point for writing and update value
+#if MYLINKXS_REMOTE_CONTROL
+			schedule.write.index[p] = index;
+			schedule.write.prod = pn;
+		    DBG_LOG(0,("WrReq=%x %x P:%d->%d c:%d\n",index,point->value,p,pn,c));
+#else
 			schedule.write.index[p] = index;
 			sensor_points.points[index].value.value = point->value;
 			schedule.write.prod = pn;
-
+#endif
 			// run the mote state machine
-			osens_mote_tick();
+			scheduler_push_task((task_cbt) osens_mote_sm, TASKPRIO_OSENS_MAIN);
 
 			return 1;
 		}
@@ -787,6 +1110,83 @@ uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
 	}
 	else
 		return 0;
+}
+#endif
+
+uint8_t osens_get_num_points(void)
+{
+	if(sm_state.state >= OSENS_STATE_SEND_PT_DESC)
+	{
+		return board_info.num_of_points;
+	}
+	else
+		return 0;
+}
+
+uint8_t osens_get_brd_desc(osens_brd_id_t *brd)
+{
+	if(sm_state.state >= OSENS_STATE_SEND_PT_DESC)
+	{
+		memcpy(brd,&board_info,sizeof(osens_brd_id_t));
+			return 1;
+		}
+		else
+			return 0;
+	}
+
+uint8_t osens_get_pdesc(uint8_t index, osens_point_desc_t *desc)
+{
+#if 1 //teste rff
+	if((sm_state.state >= OSENS_STATE_RUN_SCH) && (index <= sensor_points.num_of_points))
+	{
+		memcpy(desc,&sensor_points.points[0].desc,sizeof(osens_point_desc_t));
+		return 1;
+	}
+	else
+		return 0;
+#else
+	//teste rff
+	sensor_points.points[0].desc.unit = index;
+	sensor_points.points[0].desc.access_rights = sm_state.state;
+	sensor_points.points[0].desc.sampling_time_x250ms = sensor_points.num_of_points;
+	//teste rff
+
+	memcpy(desc,&sensor_points.points[0].desc,sizeof(osens_point_desc_t));
+	return 1;
+#endif
+}
+
+int8_t osens_get_ptype(uint8_t index)
+{
+#if 1
+	if((sm_state.state >= OSENS_STATE_RUN_SCH) && (index <= sensor_points.num_of_points))
+	{
+		return sensor_points.points[index].value.type;
+	}
+	else
+		return -1;
+#else
+	return sensor_points.points[0].value.type;
+#endif
+
+}
+
+uint8_t osens_get_point(uint8_t index, osens_point_t *point)
+{
+#if 1 //teste rff
+	if((sm_state.state >= OSENS_STATE_RUN_SCH) && (index <= sensor_points.num_of_points))
+	{
+		memcpy(point,&sensor_points.points[0].value,sizeof(osens_point_t));
+		return 1;
+	}
+	else
+		return 0;
+#else
+	memcpy(point,&sensor_points.points[0].value,sizeof(osens_point_t));
+	return 1;
+
+#endif
+
 }
 
 /**************************************************************************//**

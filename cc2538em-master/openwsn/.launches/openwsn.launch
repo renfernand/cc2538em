@@ -18,7 +18,7 @@
 <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_PROJECT.Texas Instruments XDS100v3 USB Emulator/Cortex_M3_0" value="openwsn"/>
 <stringAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_TARGET_CONFIG" value="C:\OWSN1\openwsn\targetConfigs\CC2538SF53.ccxml"/>
 <booleanAttribute key="com.ti.ccstudio.debug.debugModel.ATTR_USE_DEFAULT_TARGET_CONFIG" value="false"/>
-<stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.Texas Instruments XDS100v3 USB Emulator/Cortex_M3_0" value="C:/OWSN1\openwsn\Debug\openwsn.out"/>
+<stringAttribute key="com.ti.ccstudio.debug.debugModel.MRU_PROGRAM.Texas Instruments XDS100v3 USB Emulator/Cortex_M3_0" value="C:/OpenWSN2\openwsn\Debug\openwsn.out"/>
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
 <listEntry value="/openwsn"/>
 </listAttribute>
@@ -30,4 +30,5 @@
 <listAttribute key="org.eclipse.debug.ui.favoriteGroups">
 <listEntry value="org.eclipse.debug.ui.launchGroup.debug"/>
 </listAttribute>
+<stringAttribute key="org.eclipse.dsf.launch.MEMORY_BLOCKS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&#13;&#10;&lt;memoryBlockExpressionList context=&quot;reserved-for-future-use&quot;/&gt;&#13;&#10;"/>
 </launchConfiguration>

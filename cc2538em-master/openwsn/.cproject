@@ -3,63 +3,6 @@
 
 <cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
 	<storageModule configRelations="2" moduleId="org.eclipse.cdt.core.settings">
-		<cconfiguration id="com.ti.ccstudio.buildDefinitions.TMS470.Release.1645300002">
-			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.ti.ccstudio.buildDefinitions.TMS470.Release.1645300002" moduleId="org.eclipse.cdt.core.settings" name="Release__GNU">
-				<externalSettings/>
-				<extensions>
-					<extension id="com.ti.ccstudio.binaryparser.CoffParser" point="org.eclipse.cdt.core.BinaryParser"/>
-					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-					<extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-				</extensions>
-			</storageModule>
-			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="out" artifactName="${ProjName}" buildProperties="" cleanCommand="${CG_CLEAN_CMD}" description="" id="com.ti.ccstudio.buildDefinitions.TMS470.Release.1645300002" name="Release__GNU" parent="com.ti.ccstudio.buildDefinitions.TMS470.Release" postbuildStep="" prebuildStep="">
-					<folderInfo id="com.ti.ccstudio.buildDefinitions.TMS470.Release.1645300002." name="/" resourcePath="">
-						<toolChain id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exe.ReleaseToolchain.1838773885" name="TI Build Tools" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exe.ReleaseToolchain" targetTool="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exe.linkerRelease.1344735803">
-							<option id="com.ti.ccstudio.buildDefinitions.core.OPT_TAGS.2090799676" superClass="com.ti.ccstudio.buildDefinitions.core.OPT_TAGS" valueType="stringList">
-								<listOptionValue builtIn="false" value="DEVICE_CONFIGURATION_ID=Cortex M.CC2538SF53"/>
-								<listOptionValue builtIn="false" value="DEVICE_ENDIANNESS=little"/>
-								<listOptionValue builtIn="false" value="OUTPUT_FORMAT=ELF"/>
-								<listOptionValue builtIn="false" value="CCS_MBS_VERSION=5.5.0"/>
-								<listOptionValue builtIn="false" value="LINKER_COMMAND_FILE="/>
-								<listOptionValue builtIn="false" value="RUNTIME_SUPPORT_LIBRARY=libc.a"/>
-								<listOptionValue builtIn="false" value="OUTPUT_TYPE=executable"/>
-							</option>
-							<option id="com.ti.ccstudio.buildDefinitions.core.OPT_CODEGEN_VERSION.373254750" name="Compiler version" superClass="com.ti.ccstudio.buildDefinitions.core.OPT_CODEGEN_VERSION" value="GNU_4.7.4:Linaro" valueType="string"/>
-							<targetPlatform id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exe.targetPlatformRelease.1845564507" name="Platform" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exe.targetPlatformRelease"/>
-							<builder buildPath="${BuildDirectory}" id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exe.builderRelease.1440958095" keepEnvironmentInBuildfile="false" name="GNU Make" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exe.builderRelease"/>
-							<tool id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exe.compilerRelease.1717831805" name="GNU Compiler" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exe.compilerRelease">
-								<option id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.compilerID.INCLUDE_PATH.466852574" name="Include paths (-I)" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.compilerID.INCLUDE_PATH" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${CG_TOOL_INCLUDE_PATH}&quot;"/>
-								</option>
-								<inputType id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.compiler.inputType__C_SRCS.737158201" name="C Sources" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.compiler.inputType__C_SRCS"/>
-								<inputType id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.compiler.inputType__CPP_SRCS.229956009" name="C++ Sources" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.compiler.inputType__CPP_SRCS"/>
-								<inputType id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.compiler.inputType__ASM_SRCS.1146053084" name="Assembly Sources" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.compiler.inputType__ASM_SRCS"/>
-							</tool>
-							<tool id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exe.linkerRelease.1344735803" name="GNU Linker" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exe.linkerRelease">
-								<option id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.linkerID.OUTPUT_FILE.1774712399" name="Output file (-o)" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.linkerID.OUTPUT_FILE" value="&quot;${ProjName}.out&quot;" valueType="string"/>
-								<option id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.linkerID.MAP_FILE.901940497" name="Write a map file (-Map)" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.linkerID.MAP_FILE" value="&quot;${ProjName}.map&quot;" valueType="string"/>
-								<option id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.linkerID.LIBRARY.243905005" name="Libraries (-l, --library)" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.linkerID.LIBRARY" valueType="libs">
-									<listOptionValue builtIn="false" value="&quot;c&quot;"/>
-								</option>
-								<inputType id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exeLinker.inputType__CMD_SRCS.133156009" name="Linker Command Files" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exeLinker.inputType__CMD_SRCS"/>
-								<inputType id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exeLinker.inputType__CMD2_SRCS.83033105" name="Linker Command Files" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exeLinker.inputType__CMD2_SRCS"/>
-								<inputType id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exeLinker.inputType__GEN_CMDS.825858470" name="Generated Linker Command Files" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.exeLinker.inputType__GEN_CMDS"/>
-							</tool>
-							<tool id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.hex.1317590451" name="GNU Objcopy Utility" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.hex">
-								<option id="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.hex.OUTPUT_FILE.1447120764" name="Specify output file name" superClass="com.ti.ccstudio.buildDefinitions.TMS470_GNU_4.0.hex.OUTPUT_FILE" value="&quot;${BuildArtifactFileBaseName}.hex&quot;" valueType="string"/>
-							</tool>
-						</toolChain>
-					</folderInfo>
-					<sourceEntries>
-						<entry excluding="cc2538.lds|cc2538_512_gcc.cmd" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-					</sourceEntries>
-				</configuration>
-			</storageModule>
-			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
-		</cconfiguration>
 		<cconfiguration id="com.ti.ccstudio.buildDefinitions.TMS470.Debug.354819119">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.ti.ccstudio.buildDefinitions.TMS470.Debug.354819119" moduleId="org.eclipse.cdt.core.settings" name="Debug">
 				<externalSettings/>
@@ -159,7 +102,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="projects/common/03oos_mercator|kernel/freertos|drivers/OpenMote-CC2538|projects/OpenMote-CC2538|projects/samr21_xpro|bsp/boards/python|bsp/boards/OpenMote-CC2538|bsp/boards/samr21_xpro|drivers/common/osens.c|projects/common/03oos_openwsn/03oos_openwsn.o|projects/common/03oos_openwsn/03oos_openwsn_obj.o|projects/common/03oos_openwsn/03oos_openwsn_obj.c|build|bsp/boards/cc2538em/sens_itf/sens_itf_sensor.c|bsp/boards/cc2538em/sens_itf/sens_itf_core.c|openapps/swarmband|openwsn/02.5-MPLS|openwsn/02a-MAClow/stupidmac|openapps/rxl1|bsp/boards/common|projects/cc2538em/03oos_macpong|projects/cc2538em/01bsp_uart|projects/cc2538em/01bsp_radiotimer|projects/cc2538em/01bsp_radio|projects/cc2538em/01bsp_leds|projects/cc2538em/01bsp_debugpins|projects/cc2538em/01bsp_bsp_timer|projects/common/03oos_macpong|projects/common/02drv_opentimers|projects/common/02drv_openserial|projects/common/01bsp_uart|projects/common/01bsp_spi|projects/common/01bsp_radiotimer|projects/common/01bsp_radio_tx|projects/common/01bsp_radio_rx|projects/common/01bsp_radio|projects/common/01bsp_leds|projects/common/01bsp_debugpins|projects/common/01bsp_closetimers|projects/common/01bsp_bsp_timer|projects/common/01bsp_bothtimers|projects/z1|projects/xpressohack|projects/wsn430v14|projects/wsn430v13b|projects/telosb|projects/python_vs13|projects/python|projects/openmotestm|projects/k20|projects/iot-lab_M3|projects/gina|projects/derfmega|projects/ez430-rf2500|projects/cc2538|projects/agilefox|openapps/rt|openapps/rrube|openapps/rheli|openapps/imu|openapps/heli|kernel/FreeRTOS|drivers/z1|drivers/gina|bsp/chips|bsp/boards/z1|bsp/boards/xpressohack|bsp/boards/wsn430v14|bsp/boards/wsn430v13b|bsp/boards/telosb|bsp/boards/openmotestm|bsp/boards/k20|bsp/boards/iot-lab_M3|bsp/boards/gina|bsp/boards/ez430-rf2500|bsp/boards/eldorado|bsp/boards/derfmega|bsp/boards/cc2538|bsp/boards/agilefox|bootloader|setup.c|cc2538_512_gcc.cmd|startup_ccs.c|cx2538xf53_ccs.cmd" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="drivers/common/osens.c|openapps/osens/mylinkxs_app.c|projects/common/03oos_mercator|kernel/freertos|drivers/OpenMote-CC2538|projects/OpenMote-CC2538|projects/samr21_xpro|bsp/boards/python|bsp/boards/OpenMote-CC2538|bsp/boards/samr21_xpro|projects/common/03oos_openwsn/03oos_openwsn.o|projects/common/03oos_openwsn/03oos_openwsn_obj.o|projects/common/03oos_openwsn/03oos_openwsn_obj.c|build|bsp/boards/cc2538em/sens_itf/sens_itf_sensor.c|bsp/boards/cc2538em/sens_itf/sens_itf_core.c|openapps/swarmband|openwsn/02.5-MPLS|openwsn/02a-MAClow/stupidmac|openapps/rxl1|bsp/boards/common|projects/cc2538em/03oos_macpong|projects/cc2538em/01bsp_uart|projects/cc2538em/01bsp_radiotimer|projects/cc2538em/01bsp_radio|projects/cc2538em/01bsp_leds|projects/cc2538em/01bsp_debugpins|projects/cc2538em/01bsp_bsp_timer|projects/common/03oos_macpong|projects/common/02drv_opentimers|projects/common/02drv_openserial|projects/common/01bsp_uart|projects/common/01bsp_spi|projects/common/01bsp_radiotimer|projects/common/01bsp_radio_tx|projects/common/01bsp_radio_rx|projects/common/01bsp_radio|projects/common/01bsp_leds|projects/common/01bsp_debugpins|projects/common/01bsp_closetimers|projects/common/01bsp_bsp_timer|projects/common/01bsp_bothtimers|projects/z1|projects/xpressohack|projects/wsn430v14|projects/wsn430v13b|projects/telosb|projects/python_vs13|projects/python|projects/openmotestm|projects/k20|projects/iot-lab_M3|projects/gina|projects/derfmega|projects/ez430-rf2500|projects/cc2538|projects/agilefox|openapps/rt|openapps/rrube|openapps/rheli|openapps/imu|openapps/heli|kernel/FreeRTOS|drivers/z1|drivers/gina|bsp/chips|bsp/boards/z1|bsp/boards/xpressohack|bsp/boards/wsn430v14|bsp/boards/wsn430v13b|bsp/boards/telosb|bsp/boards/openmotestm|bsp/boards/k20|bsp/boards/iot-lab_M3|bsp/boards/gina|bsp/boards/ez430-rf2500|bsp/boards/eldorado|bsp/boards/derfmega|bsp/boards/cc2538|bsp/boards/agilefox|bootloader|setup.c|cc2538_512_gcc.cmd|startup_ccs.c|cx2538xf53_ccs.cmd" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

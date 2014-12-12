@@ -4,6 +4,7 @@
 #include "osens_itf.h"
 #include "buf_io.h"
 #include "crc16.h"
+#include "debugpins.h"
 
 #define OSENS_DBG_FRAME 1
 
@@ -258,7 +259,58 @@ uint8_t osens_pack_cmd_res(osens_cmd_res_t *cmd, uint8_t *frame)
     return size;
 }
 
+#if (MYLINKXS_REMOTE_CONTROL == 1)
+uint8_t osens_unpack_cmd_res(osens_cmd_res_t * cmd, uint8_t *frame, uint8_t frame_size)
+{
+    uint8_t size;
+    uint8_t *buf = frame;
+    uint16_t crc;
+    uint16_t frame_crc;
 
+    if (frame_size < 3)
+    {
+        cmd->hdr.status = OSENS_ANS_ERROR;
+        return 0;
+    }
+
+    // minimal header decoding
+    cmd->hdr.size = buf_io_get8_fl_ap(buf);
+    cmd->hdr.addr = buf_io_get8_fl_ap(buf);
+    cmd->hdr.status = buf_io_get8_fl_ap(buf);
+    size = cmd->hdr.size;
+
+ #if 0
+    frame_crc = buf_io_get16_fl(&frame[cmd->hdr.size]);
+    crc = crc16_calc(frame, cmd->hdr.size);
+    cmd->crc = frame_crc;
+
+    if (frame_crc != crc)
+    {
+        //OS_UTIL_LOG(OSENS_DBG_FRAME, ("Invalid CRC %04X <> %04X", frame_crc, crc));
+        cmd->hdr.status = OSENS_ANS_CRC_ERROR;
+        return 0;
+    }
+#endif
+
+    if (cmd->hdr.status != OSENS_ANS_OK)
+    {
+        //OS_UTIL_LOG(OSENS_DBG_FRAME, ("Response error %d", cmd->hdr.status));
+        return 0;
+    }
+
+
+    if ((cmd->hdr.addr >= OSENS_REGMAP_READ_POINT_DATA_1) &&
+        (cmd->hdr.addr <= OSENS_REGMAP_READ_POINT_DATA_32))
+    {
+        cmd->payload.point_value_cmd.type = buf_io_get8_fl_ap(buf);
+        buf += osens_unpack_point_value(&cmd->payload.point_value_cmd, buf);
+        DBG_LOG(0,("Res1=%x %x %x \n",cmd->hdr.addr ,cmd->payload.point_value_cmd.type,cmd->payload.point_value_cmd.value.u16));
+
+    }
+
+    return size;
+}
+#else
 uint8_t osens_unpack_cmd_res(osens_cmd_res_t * cmd, uint8_t *frame, uint8_t frame_size)
 {
     uint8_t size;
@@ -353,6 +405,7 @@ uint8_t osens_unpack_cmd_res(osens_cmd_res_t * cmd, uint8_t *frame, uint8_t fram
     size = cmd->hdr.size + 2; // crc 
     return size;
 }
+#endif
 
 uint8_t osens_pack_cmd_req(osens_cmd_req_t *cmd, uint8_t *frame)
 {

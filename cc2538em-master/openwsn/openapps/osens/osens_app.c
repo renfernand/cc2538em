@@ -7,6 +7,8 @@
 #include "packetfunctions.h"
 #include "opentimers.h"
 #include "scheduler.h"
+#include "osens_app.h"
+#include "debugpins.h"
 
 #define TRACE_ON 0
 
@@ -19,6 +21,10 @@ const uint8_t osens_desc_path0 [] = "d";
 coap_resource_desc_t osens_desc_vars;
 const uint8_t osens_val_path0 [] = "s";
 coap_resource_desc_t osens_val_vars;
+
+#if (MYLINKXS_REMOTE_CONTROL == 1)
+void simula_envio_cmd(osens_point_t *pt);
+#endif
 
 static double decode_number(uint8_t *buffer, uint8_t len)
 {
@@ -402,7 +408,7 @@ owerror_t osens_val_receive(
 			*/
 		} // /s/1 or /s/12
 		else if(((coap_options[1].length == 1 || coap_options[1].length == 2)) &&
-				(coap_options[1].type == COAP_OPTION_NUM_URIPATH))
+		 		(coap_options[1].type == COAP_OPTION_NUM_URIPATH))
 		{
 
 			uint8_t index;
@@ -460,9 +466,18 @@ owerror_t osens_val_receive(
 			number = decode_number(coap_options[2].pValue,coap_options[2].length);
 			pt.type = osens_get_ptype(index);
 
+			DBG_LOG(0,("App I:%x P:%x L:%x T:%x \n",index,coap_options[2].pValue[0],coap_options[2].length,pt.type));
+
 			if(pt.type >= 0)
 			{
+
 				set_point_val(&pt,number);
+
+				DBG_LOG(1,("WrApp=I:%x T:%x V:%x\n",index,pt.type,pt.value.u16));
+
+#if 0 // MYLINKXS_REMOTE_CONTROL
+				simula_envio_cmd(&pt);
+#endif
 				if(osens_set_pvalue(index,&pt))
 				{
 					// set the CoAP header
