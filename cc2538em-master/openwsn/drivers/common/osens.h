@@ -8,6 +8,10 @@
 #ifndef __OSENS_H__
 #define __OSENS_H__
 
+#define MYLINKXS_REMOTE_CONTROL 0
+#define MYLINKXS_LIGHT_CONTROL  0
+#define BYTE_END_FRAME 'Z'
+
 #define OSENS_LATEST_VERSION     0
 #define OSENS_MODEL_NAME_SIZE    8
 #define OSENS_MANUF_NAME_SIZE    8
@@ -92,6 +96,7 @@ uint8_t osens_get_point(uint8_t index, osens_point_t *point);
 uint8_t osens_get_pdesc(uint8_t index, osens_point_desc_t *desc);
 int8_t osens_get_ptype(uint8_t index);
 uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point);
+uint8_t osens_liga_lampada_local(void);
 
 #endif /* __OSENS_H__ */
 
