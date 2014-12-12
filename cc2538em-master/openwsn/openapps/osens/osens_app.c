@@ -473,7 +473,7 @@ owerror_t osens_val_receive(
 
 				set_point_val(&pt,number);
 
-				DBG_LOG(1,("WrApp=I:%x T:%x V:%x\n",index,pt.type,pt.value.u16));
+				DBG_LOG(0,("WrApp=I:%x T:%x V:%x\n",index,pt.type,pt.value.u16));
 
 #if 0 // MYLINKXS_REMOTE_CONTROL
 				simula_envio_cmd(&pt);
