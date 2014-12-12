@@ -148,7 +148,13 @@ port_INLINE void bspDBpinToggle(uint32_t base, uint8_t ui8Pin)
 
 
 
-#if (DEBUG_VIA_SERIAL == 1)
+#if (DEBUG_VIA_SERIAL == 0)
+void UARTprintf(const char *pcString, ...)
+{
+
+}
+
+#else
 
 /*
 uint8_t debug_send_frame(char *frame, uint8_t size)
