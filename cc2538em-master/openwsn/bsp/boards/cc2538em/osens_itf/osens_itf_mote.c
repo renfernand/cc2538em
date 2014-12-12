@@ -160,7 +160,11 @@ osens_acq_schedule_t schedule;
 //=========================== prototypes =======================================
 //=========================== public ==========================================
 void sensor_timer(void);
+
+#if (MYLINKXS_LIGHT_CONTROL == 0)
 static void osens_mote_tick(void);
+#endif
+
 static void buBufFlush(void);
 void bspLedToggle(uint8_t ui8Leds);
 #if TRACE_ON == 1
@@ -238,7 +242,7 @@ static uint8_t osens_mote_pack_send_frame(osens_cmd_req_t *cmd, uint8_t cmd_size
 
 
 #else
-    if (osens_mote_send_frame(frame, cmd_size) != cmd_size)
+    	if (osens_mote_send_frame(frame, cmd_size) != cmd_size)
     	return OSENS_STATE_EXEC_ERROR;
 #endif
 
@@ -254,16 +258,17 @@ static uint8_t osens_mote_sm_func_pt_val_ans(osens_mote_sm_state_t *st)
     point = schedule.scan.index[st->point_index];
     ans_size = 6 + datatype_sizes[sensor_points.points[point].desc.type];
 
+    size = osens_unpack_cmd_res(&ans, frame, ans_size);
+
 #if (MYLINKXS_REMOTE_CONTROL == 0)
+
     // retry ?
     if (size != ans_size || ans.hdr.addr != (OSENS_REGMAP_READ_POINT_DATA_1 + point))
         return OSENS_STATE_EXEC_OK;
 
     // ok, save and go to the next
-    size = osens_unpack_cmd_res(&ans, frame, ans_size);
     memcpy(&sensor_points.points[point].value, &ans.payload.point_value_cmd, sizeof(osens_point_t));
 #else
-    size = osens_unpack_cmd_res(&ans, frame, ans_size);
     memcpy(&sensor_points.points[point].value, &ans.payload.point_value_cmd, sizeof(osens_point_t));
 
     DBG_LOG(DBG_READ,("Res=%d %s %x \n",point,sensor_points.points[point].desc.name, sensor_points.points[point].value.value.u16));
@@ -291,9 +296,12 @@ void simula_envio_cmd(osens_point_t *pt)
 
 static uint8_t osens_mote_sm_func_req_pt_val(osens_mote_sm_state_t *st)
 {
-    uint8_t point,uc;
+	uint8_t point;
+#if MYLINKXS_REMOTE_CONTROL
+	uint8_t uc;
 	uint8_t ucBotao=0;
 	osens_point_t pt;
+#endif
 
 	// end of point reading
     if(st->point_index >= schedule.scan.num_of_points)
@@ -321,7 +329,7 @@ static uint8_t osens_mote_sm_func_req_pt_val(osens_mote_sm_state_t *st)
 	}
 #endif
 
-    return osens_mote_pack_send_frame(&cmd, 4);
+	return osens_mote_pack_send_frame(&cmd, 4);
 
 }
 
@@ -398,7 +406,7 @@ static uint8_t osens_mote_sm_func_wr_pt(osens_mote_sm_state_t *st)
 	leds_debug_toggle();
 
     DBG_LOG(0,("WrReq0=%x %x %x\n",c,p,st->retries));
-	// end of point writing
+ 	// end of point writing
 	if(c == p)
 		return OSENS_STATE_EXEC_WAIT_ABORT;
 
@@ -446,7 +454,7 @@ static uint8_t osens_mote_sm_func_run_sch(osens_mote_sm_state_t *st)
     for (n = 0; n < schedule.num_of_points; n++)
     {
 
-    	if(schedule.points[n].counter > 0)
+	    if(schedule.points[n].counter > 0)
     		schedule.points[n].counter--;
 
         if (schedule.points[n].counter == 0)
@@ -686,7 +694,9 @@ static uint8_t osens_mote_sm_func_req_ver(osens_mote_sm_state_t *st)
 static uint8_t osens_mote_sm_func_init(osens_mote_sm_state_t *st)
 {
 	uint8_t ret = OSENS_STATE_EXEC_OK;
+#if MYLINKXS_REMOTE_CONTROL
 	uint8_t pointpos=0;
+#endif
 
 	leds_error_on();
 
@@ -824,10 +834,14 @@ void osens_mote_sm(void)
 #endif
 
 }
+
+#if (MYLINKXS_LIGHT_CONTROL == 0)
+
 static void osens_mote_tick(void)
 {
     scheduler_push_task((task_cbt) osens_mote_sm, TASKPRIO_OSENS_MAIN);
 }
+#endif
 
 #if MYLINKXS_REMOTE_CONTROL
 const osens_mote_sm_table_t osens_mote_sm_table[] =
@@ -875,9 +889,6 @@ const osens_mote_sm_table_t osens_mote_sm_table[] =
 };
 #endif
 
-#if (MYLINKXS_SENSORS == 1)
-
-
 #if MYLINKXS_LIGHT_CONTROL
 uint8_t osens_init(void)
 {
@@ -912,9 +923,9 @@ uint8_t osens_init(void)
     sensor_points.points[0].value.value.u8 = 10;
     sensor_points.num_of_points = 1;
 
-	osens_mote_init();
+    osens_mote_init();
 
-	return 0;
+    return 0;
 }
 
 
@@ -924,7 +935,7 @@ static void light_mote_tick(void)
 }
 
 uint8_t osens_mote_init(void)
-	{
+{
 
 	//Inicializo a maquina de estado como ja rodando pois profile é fixo
 	memset(&sm_state, 0, sizeof(osens_mote_sm_state_t));
@@ -933,7 +944,7 @@ uint8_t osens_mote_init(void)
 	//buBufFlush();
 	opentimers_start(OSENS_SM_TICK_MS, TIMER_PERIODIC, TIME_MS, (opentimers_cbt) light_mote_tick);
 
-		return 0;
+	return 0;
 }
 
 uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
@@ -943,97 +954,21 @@ uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
 
 	opentimers_start(1000,TIMER_ONESHOT,TIME_MS,light_timer);
 
-		return 1;
-	}
-
-
-#endif
-
-#if MYLINKXS_REMOTE_CONTROL
-
-void control_mote_sm(void)
-{
-	osens_cmd_req_t cmd;
-
-    cmd.hdr.addr = OSENS_REGMAP_READ_POINT_DATA_1;
-
-    sensor_points.points[0].value.type  = 0;
-
-    memcpy(&cmd.payload.point_value_cmd, &sensor_points.points[point].value, sizeof(osens_point_t));
-
-    osens_mote_pack_send_frame(&cmd,4);
-
-    //sensor_points.points[0].value.value.u8 = light_get_value();
-}
-
-
-static void control_mote_tick(void)
-{
-    scheduler_push_task((task_cbt) control_mote_sm, TASKPRIO_OSENS_MAIN);
-}
-
-
-uint8_t osens_mote_init(void)
-	{
-
-    //Inicializo a maquina de estado como ja rodando pois profile é fixo
-	memset(&sm_state, 0, sizeof(osens_mote_sm_state_t));
-	sm_state.state = OSENS_STATE_RUN_SCH;
-
-    opentimers_start(OSENS_SM_TICK_MS, TIMER_PERIODIC, TIME_MS, (opentimers_cbt) control_mote_tick);
-
-		return 0;
-}
-
-
-
-/*
- * Envia o comando diretamente na serial..
- * Espera uma resposta.
- */
-uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
-{
-    cmd.hdr.addr = OSENS_REGMAP_READ_POINT_DATA_1 + point;
-    //st->trmout_counter = 0;
-    //st->trmout = MS2TICK(5000);
-    cmd.payload.command_cmd.cmd[0] = 0x20;
-    cmd.payload.command_cmd.cmd[1] = 0x21;
-    cmd.payload.command_cmd.cmd[2] = 0x22;
-    cmd.payload.command_cmd.cmd[3] = 0x23;
-
-    return osens_mote_pack_send_frame(&cmd, 4);
-
-
 	return 1;
 }
 
+// Provisorio liga lampada
+uint8_t osens_liga_lampada_local(void)
+{
+	osens_point_t point;
 
-static uint8_t osens_mote_sm_func_req_pt_val(osens_mote_sm_state_t *st)
-	{
-    uint8_t point;
+	point.type=0;
+    point.value.u8=1;
 
-	// end of point reading
-    if(st->point_index >= schedule.scan.num_of_points)
-    	return OSENS_STATE_EXEC_WAIT_ABORT;
+	osens_set_pvalue(0, &point);
 
-    // error condition after 3 retries
-	st->retries++;
-	if(st->retries > 3)
-		return OSENS_STATE_EXEC_ERROR;
-
-	point = schedule.scan.index[st->point_index];
-    cmd.hdr.addr = OSENS_REGMAP_READ_POINT_DATA_1 + point;
-    st->trmout_counter = 0;
-    st->trmout = MS2TICK(5000);
-    return osens_mote_pack_send_frame(&cmd, 4);
-
-	}
-
-
-#endif
-
-
-
+	return 0;
+}
 
 #else
 
@@ -1061,7 +996,7 @@ uint8_t osens_mote_init(void)
 	//buBufFlush();
     opentimers_start(OSENS_SM_TICK_MS, TIMER_PERIODIC, TIME_MS, (opentimers_cbt) osens_mote_tick);
 
-		return 0;
+    return 0;
 }
 
 
@@ -1111,7 +1046,8 @@ uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
 	else
 		return 0;
 }
-#endif
+
+#endif  //#if MYLINKXS_LIGHT_CONTROL
 
 uint8_t osens_get_num_points(void)
 {
@@ -1128,11 +1064,11 @@ uint8_t osens_get_brd_desc(osens_brd_id_t *brd)
 	if(sm_state.state >= OSENS_STATE_SEND_PT_DESC)
 	{
 		memcpy(brd,&board_info,sizeof(osens_brd_id_t));
-			return 1;
-		}
-		else
-			return 0;
+		return 1;
 	}
+	else
+		return 0;
+}
 
 uint8_t osens_get_pdesc(uint8_t index, osens_point_desc_t *desc)
 {
