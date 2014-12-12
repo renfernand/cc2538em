@@ -33,22 +33,14 @@
 #define BSP_PIND_2              GPIO_PIN_2      //!< PD2 -- fsm   -RF1.8
 #define BSP_PIND_1              GPIO_PIN_1      //!< PD1 -- task  -RF1.10
 #define BSP_PIND_0              GPIO_PIN_0      //!< PD0 -- radio -RF1-12
+
+
 #if (DEBUG_VIA_SERIAL == 1)
+
 #define DBG_MAX_REPLY_SIZE       20
-static char pucUdpLog[DBG_MAX_REPLY_SIZE + 1];
 //=========================== variables =======================================
-//*****************************************************************************
-//
-// The base address of the chosen UART.
-//
-//*****************************************************************************
-static uint32_t g_ui32Base = UART0_BASE;
-//*****************************************************************************
-//
-// A mapping from an integer between 0 and 15 to its ASCII character
-// equivalent.
-//
-//*****************************************************************************
+// static char pucUdpLog[DBG_MAX_REPLY_SIZE + 1];
+// static uint32_t g_ui32Base = UART0_BASE;
 static const char * const g_pcHex = "0123456789abcdef";
 
 extern void UARTprintf(const char *pcString, ...);
