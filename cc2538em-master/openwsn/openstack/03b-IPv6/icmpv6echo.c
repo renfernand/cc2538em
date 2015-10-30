@@ -5,11 +5,18 @@
 #include "openqueue.h"
 #include "packetfunctions.h"
 #include "debugpins.h"
+#include "IEEE802154E.h"
 
 //=========================== variables =======================================
 
 icmpv6echo_vars_t icmpv6echo_vars;
 
+#if (DEBUG_LOG_RIT  == 1)
+extern ieee154e_vars_t    ieee154e_vars;
+extern ieee154e_stats_t   ieee154e_stats;
+extern ieee154e_dbg_t     ieee154e_dbg;
+static uint8_t rffbuf[10];
+#endif
 //=========================== prototypes ======================================
 
 //=========================== public ==========================================
@@ -94,6 +101,8 @@ void icmpv6echo_sendDone(OpenQueueEntry_t* msg, owerror_t error) {
 void icmpv6echo_receive(OpenQueueEntry_t* msg) {
    OpenQueueEntry_t* reply;
    msg->owner = COMPONENT_ICMPv6ECHO;
+
+
    switch(msg->l4_sourcePortORicmpv6Type) {
       case IANA_ICMPv6_ECHO_REQUEST:
          openserial_printInfo(COMPONENT_ICMPv6ECHO,ERR_RCVD_ECHO_REQUEST,
@@ -125,10 +134,40 @@ void icmpv6echo_receive(OpenQueueEntry_t* msg) {
          ((ICMPv6_ht*)(reply->payload))->type = reply->l4_sourcePortORicmpv6Type;
          packetfunctions_calculateChecksum(reply,(uint8_t*)&(((ICMPv6_ht*)(reply->payload))->checksum));//do last
          icmpv6echo_vars.busySending = TRUE;
+
          if (icmpv6_send(reply)!=E_SUCCESS) {
             icmpv6echo_vars.busySending = FALSE;
             openqueue_freePacketBuffer(reply);
+
+			#if (DEBUG_LOG_RIT  == 1)
+			 {
+				 uint8_t pos=0;
+				   rffbuf[pos++]= RFF_ICMPv6ECHO_TX;
+				   rffbuf[pos++]= 0x80;
+				   rffbuf[pos++]= reply->creator;
+				   rffbuf[pos++]= reply->l4_protocol;
+
+				   openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+			 }
+			#endif
          }
+         else
+         {
+        	#if (DEBUG_LOG_RIT  == 1)
+        	 {
+        		 uint8_t pos=0;
+          	   rffbuf[pos++]= RFF_ICMPv6ECHO_TX;
+          	   rffbuf[pos++]= 0x01;
+			   rffbuf[pos++]= reply->creator;
+          	   rffbuf[pos++]= reply->l4_protocol;
+
+          	   openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+        	 }
+        	#endif
+
+         }
+
+
          break;
       case IANA_ICMPv6_ECHO_REPLY:
          openserial_printInfo(COMPONENT_ICMPv6ECHO,ERR_RCVD_ECHO_REPLY,

@@ -7,7 +7,7 @@
 \addtogroup ICMPv6RPL
 \{
 */
-
+#include "board.h"
 #include "opentimers.h"
 
 //=========================== define ==========================================
@@ -136,7 +136,13 @@ END_PACK
 typedef struct {
    // admin
    bool                      busySending;             ///< currently sending DIO/DAO.
+   bool                      busySendingDAO;          ///< currently sending DAO.  RFF for RIT
+   uint8_t                   CountSendingDAO;          ///< currently counting DAO.  RFF for RIT
+#if (NEW_DAG_BRIDGE == 1)
+   uint8_t                   fDodagidWritten;         ///< is DODAGID already written to DIO/DAO?
+#else
    uint8_t                   DODAGIDFlagSet;          ///< is DODAGID set already?
+#endif
    // DIO-related
    icmpv6rpl_dio_ht          dio;                     ///< pre-populated DIO packet.
    open_addr_t               dioDestination;          ///< IPv6 destination address for DIOs.
@@ -157,6 +163,9 @@ typedef struct {
 void icmpv6rpl_init(void);
 void icmpv6rpl_sendDone(OpenQueueEntry_t* msg, owerror_t error);
 void icmpv6rpl_receive(OpenQueueEntry_t* msg);
+#if (NEW_DAG_BRIDGE == 1)
+void     icmpv6rpl_writeDODAGid(uint8_t* dodagid);
+#endif
 uint8_t icmpv6rpl_getRPLIntanceID(void);
 
 /**

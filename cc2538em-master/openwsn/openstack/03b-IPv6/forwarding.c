@@ -12,8 +12,18 @@
 #include "opentcp.h"
 #include "debugpins.h"
 #include "scheduler.h"
+#include "IEEE802154E.h"
 
 //=========================== variables =======================================
+#if (DEBUG_LOG_RIT  == 1)
+//extern ieee154e_vars_t    ieee154e_vars;
+//extern ieee154e_stats_t   ieee154e_stats;
+//extern ieee154e_dbg_t     ieee154e_dbg;
+static uint8_t rffbuf[10];
+
+#endif
+
+uint8_t ucFlagForwarding =0;
 
 //=========================== prototypes ======================================
 
@@ -122,7 +132,23 @@ void forwarding_sendDone(OpenQueueEntry_t* msg, owerror_t error) {
       openqueue_freePacketBuffer(msg);
    } else {
       // this is a packet created by this mote
-      
+
+#if 0 // (DEBUG_LOG_RIT  == 1)
+   {
+ 	 //uint32_t  capturetime=radio_getTimerValue();
+     //uint8_t   *pucAux = (uint8_t *) &capturetime;
+   	 uint8_t   pos=0;
+
+	rffbuf[pos++]= RFF_COMPONENT_FORWARDING_TX;
+	rffbuf[pos++]= 0x01;
+	rffbuf[pos++]= msg->creator;
+	rffbuf[pos++]= msg->l4_protocol;
+	rffbuf[pos++]= msg->l2_frameType;
+	rffbuf[pos++]= msg->l2_sendDoneError;
+
+	openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+   }
+#endif
       // indicate sendDone to upper layer
       switch(msg->l4_protocol) {
          case IANA_TCP:
@@ -186,7 +212,7 @@ void forwarding_receive(
    // populate packets metadata with L3 information
    memcpy(&(msg->l3_destinationAdd),&ipv6_header->dest,sizeof(open_addr_t));
    memcpy(&(msg->l3_sourceAdd),     &ipv6_header->src, sizeof(open_addr_t));
-   
+
    if (
          (
             idmanager_isMyAddress(&ipv6_header->dest)
@@ -198,6 +224,24 @@ void forwarding_receive(
       ) {
       // this packet is for me, no source routing header.
 
+#if 0 //(DEBUG_LOG_RIT == 1)
+	   {
+		 uint8_t pos=0;
+
+		   rffbuf[pos++]= RFF_COMPONENT_FORWARDING_RX;
+		   rffbuf[pos++]= 0x01;
+		   rffbuf[pos++]= (uint8_t) msg->l4_protocol;
+		   rffbuf[pos++]= (uint8_t) msg->l4_destination_port;
+		   rffbuf[pos++]= (uint8_t) msg->l4_protocol_compressed;
+		   rffbuf[pos++]= (uint8_t) msg->length;
+		   rffbuf[pos++]= (uint8_t) msg->l2_frameType;
+		   rffbuf[pos++]= idmanager_isMyAddress(&ipv6_header->dest);
+		   rffbuf[pos++]= packetfunctions_isBroadcastMulticast(&ipv6_header->dest);
+		   rffbuf[pos++]= ipv6_header->next_header;
+
+		   openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+	   }
+#endif
       // indicate received packet to upper layer
       switch(msg->l4_protocol) {
          case IANA_TCP:
@@ -251,7 +295,6 @@ void forwarding_receive(
             );
          }
          
-
          if (senderRank < neighbors_getMyDAGrank()){
             // loop
             
@@ -274,6 +317,25 @@ void forwarding_receive(
          
 
          forwarding_createRplOption(rpl_option, rpl_option->flags);
+
+#if (DEBUG_LOG_RIT == 1)
+   {
+	 uint8_t pos=0;
+
+	   rffbuf[pos++]= RFF_COMPONENT_FORWARDING_RX;
+	   rffbuf[pos++]= 0x02;
+	   rffbuf[pos++]= (uint8_t) msg->l4_protocol;
+	   rffbuf[pos++]= (uint8_t) msg->length;
+	   rffbuf[pos++]= (uint8_t) ipv6_header->src.type;
+	   rffbuf[pos++]= (uint8_t) ipv6_header->src.addr_128b[14];
+	   rffbuf[pos++]= (uint8_t) ipv6_header->src.addr_128b[15];
+	   rffbuf[pos++]= (uint8_t) ipv6_header->dest.addr_128b[14];
+	   rffbuf[pos++]= (uint8_t) ipv6_header->dest.addr_128b[15];
+	   ucFlagForwarding = TRUE;
+	   openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+   }
+#endif
+
          #ifdef FLOW_LABEL_RPL_DOMAIN
          // do not recreate flow label, relay the same but adding current flags
          //forwarding_createFlowLabel(&(ipv6_header->flow_label),flags);
@@ -354,6 +416,7 @@ owerror_t forwarding_send_internal_RoutingTable(
       uint8_t                fw_SendOrfw_Rcv
    ) {
    
+
    // retrieve the next hop from the routing table
    forwarding_getNextHop(&(msg->l3_destinationAdd),&(msg->l2_nextORpreviousHop));
    if (msg->l2_nextORpreviousHop.type==ADDR_NONE) {
@@ -365,7 +428,25 @@ owerror_t forwarding_send_internal_RoutingTable(
       );
       return E_FAIL;
    }
-   
+
+#if (DEBUG_LOG_RIT == 1)
+   {
+	 uint8_t pos=0;
+
+	   rffbuf[pos++]= RFF_COMPONENT_FORWARDING_RX;
+	   rffbuf[pos++]= 0x03;
+	   rffbuf[pos++]= (uint8_t) msg->l4_protocol;
+	   rffbuf[pos++]= (uint8_t) msg->length;
+	   rffbuf[pos++]= (uint8_t) ipv6_header->src.type;
+	   rffbuf[pos++]= (uint8_t) ipv6_header->src.addr_128b[14];
+	   rffbuf[pos++]= (uint8_t) ipv6_header->src.addr_128b[15];
+	   rffbuf[pos++]= (uint8_t) ipv6_header->dest.addr_128b[14];
+	   rffbuf[pos++]= (uint8_t) ipv6_header->dest.addr_128b[15];
+
+	   openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+   }
+#endif
+
    // send to next lower layer
    return iphc_sendFromForwarding(
       msg,
@@ -427,6 +508,23 @@ owerror_t forwarding_send_internal_SourceRouting(
    
    numAddr              = (((rpl_routing_hdr->HdrExtLen*8)-rpl_routing_hdr->PadRes-(16-local_CmprE))/(16-local_CmprI))+1;
    
+#if (DEBUG_LOG_RIT == 1)
+	   {
+		 uint8_t pos=0;
+
+		   rffbuf[pos++]= RFF_COMPONENT_FORWARDING_RX;
+		   rffbuf[pos++]= 0x04;
+		   rffbuf[pos++]= (uint8_t) msg->l4_protocol;
+		   rffbuf[pos++]= (uint8_t) msg->l4_destination_port;
+		   rffbuf[pos++]= (uint8_t) msg->l4_protocol_compressed;
+		   rffbuf[pos++]= (uint8_t) msg->length;
+		   rffbuf[pos++]= (uint8_t) msg->l2_frameType;
+
+		   openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+	   }
+#endif
+
+
    if (rpl_routing_hdr->SegmentsLeft==0){
       // no more segments left, this is the last hop
       

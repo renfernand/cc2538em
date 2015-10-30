@@ -7,9 +7,16 @@
 #include "forwarding.h"
 #include "neighbors.h"
 #include "openbridge.h"
+#include "IEEE802154E.h"
 
 //=========================== variables =======================================
+#if (DEBUG_LOG_RIT  == 1)
+extern ieee154e_vars_t    ieee154e_vars;
+extern ieee154e_stats_t   ieee154e_stats;
+extern ieee154e_dbg_t     ieee154e_dbg;
+static uint8_t rffbuf[10];
 
+#endif
 //=========================== prototypes ======================================
 
 //===== IPv6 header
@@ -79,7 +86,11 @@ owerror_t iphc_sendFromForwarding(
    nh=IPHC_NH_INLINE;
    
    // error checking
+#if (NEW_DAG_BRIDGE == 1)
+   if (idmanager_getIsDAGroot()==TRUE &&
+#else
    if (idmanager_getIsBridge()==TRUE &&
+#endif
       packetfunctions_isAllRoutersMulticast(&(msg->l3_destinationAdd))==FALSE) {
       openserial_printCritical(COMPONENT_IPHC,ERR_BRIDGE_MISMATCH,
                             (errorparameter_t)0,
@@ -199,7 +210,11 @@ owerror_t iphc_sendFromForwarding(
 owerror_t iphc_sendFromBridge(OpenQueueEntry_t *msg) {
    msg->owner = COMPONENT_IPHC;
    // error checking
+#if (NEW_DAG_BRIDGE == 1)
+   if (idmanager_getIsDAGroot()==FALSE) {
+#else
    if (idmanager_getIsBridge()==FALSE) {
+#endif
       openserial_printCritical(COMPONENT_IPHC,ERR_BRIDGE_MISMATCH,
                             (errorparameter_t)1,
                             (errorparameter_t)0);
@@ -226,8 +241,11 @@ void iphc_receive(OpenQueueEntry_t* msg) {
    
    // then regular header
    iphc_retrieveIPv6Header(msg,&ipv6_header);
-   
+#if (NEW_DAG_BRIDGE == 1)
+   if (idmanager_getIsDAGroot()==FALSE ||
+#else   
    if (idmanager_getIsBridge()==FALSE ||
+#endif
       packetfunctions_isBroadcastMulticast(&(ipv6_header.dest))) {
       packetfunctions_tossHeader(msg,ipv6_header.header_length);
       

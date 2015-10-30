@@ -1,4 +1,5 @@
 #include "board.h"
+#if 0
 #include "stdio.h"
 #include <string.h>
 #include "hw_ioc.h"             // Access to IOC register defines
@@ -27,7 +28,7 @@
  *   USE_SPI_INTERFACE
  */
 //=========================== variables =======================================
-#if 0
+
 typedef struct {
    coap_resource_desc_t desc;
    opentimer_id_t  timerId;

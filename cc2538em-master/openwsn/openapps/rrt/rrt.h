@@ -1,15 +1,16 @@
-#ifndef __TOPOLOGY_H
-#define __TOPOLOGY_H
+#ifndef __RRT_H
+#define __RRT_H
 
 /**
-\addtogroup MAClow
+\addtogroup AppCoAP
 \{
-\addtogroup topology
+\addtogroup rrt
 \{
 */
 
 #include "opendefs.h"
-#include "IEEE802154.h"
+#include "opencoap.h"
+#include "schedule.h"
 
 //=========================== define ==========================================
 
@@ -17,12 +18,17 @@
 
 //=========================== variables =======================================
 
-//=========================== prototypes ======================================
+typedef struct {
+	coap_resource_desc_t desc;
+	uint8_t discovered;
+} rrt_vars_t;
 
 //=========================== prototypes ======================================
 
-bool topology_isAcceptablePacket(ieee802154_header_iht* ieee802514_header);
+void rrt_init(void);
 
+void rrt_sendCoAPMsg(char actionMsg, uint8_t *ipv6mote);
+void rrt_sendDone(OpenQueueEntry_t* msg, owerror_t error);
 /**
 \}
 \}

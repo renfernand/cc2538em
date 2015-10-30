@@ -194,6 +194,28 @@ bool packetfunctions_sameAddress(open_addr_t* address_1, open_addr_t* address_2)
    return FALSE;
 }
 
+
+// compare address 128 bits with 64 bits
+bool packetfunctions_sameAddress128_64(open_addr_t* address_1, open_addr_t* address_2) {
+
+	uint8_t ret=FALSE;
+
+   if ((address_1->type == 3) && (address_2->type == 2))
+   {
+	   if ( (address_1->addr_128b[15] == address_2->addr_64b[7]) &&
+		    (address_1->addr_128b[14] == address_2->addr_64b[6]) &&
+		    (address_1->addr_128b[13] == address_2->addr_64b[5]) &&
+		    (address_1->addr_128b[12] == address_2->addr_64b[4]) &&
+		    (address_1->addr_128b[11] == address_2->addr_64b[3]) &&
+  	        (address_1->addr_128b[10] == address_2->addr_64b[2]) )
+	   {
+		  return TRUE;
+	   }
+   }
+
+   return ret;
+}
+
 //======= address read/write
 
 void packetfunctions_readAddress(uint8_t* payload, uint8_t type, open_addr_t* writeToAddress, bool littleEndian) {

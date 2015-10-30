@@ -21,6 +21,16 @@
 
 sixtop_vars_t sixtop_vars;
 
+#if (DEBUG_LOG_RIT  == 1)
+
+extern ieee154e_vars_t    ieee154e_vars;
+extern ieee154e_stats_t   ieee154e_stats;
+extern ieee154e_dbg_t     ieee154e_dbg;
+static uint8_t rffbuf[10];
+#define TESTE_RIT_GENERATE_DATA_MSG  0
+
+#endif
+
 //=========================== prototypes ======================================
 
 // send internal
@@ -320,6 +330,28 @@ owerror_t sixtop_send(OpenQueueEntry_t *msg) {
    msg->owner        = COMPONENT_SIXTOP;
    msg->l2_frameType = IEEE154_TYPE_DATA;
    
+#if 0 //ENABLE_DEBUG_RFF
+   {
+		//uint32_t capturetime;
+		//uint8_t *pucAux = (uint8_t *) &capturetime;
+		uint8_t pos=0;
+
+		//capturetime=radio_getTimerValue();
+
+		 rffbuf[pos++]= RFF_SIXTOP_TX;
+		 rffbuf[pos++]= 0x01;
+		 //rffbuf[pos++]= *pucAux++;
+		 //rffbuf[pos++]= *pucAux++;
+		 //rffbuf[pos++]= *pucAux++;
+		 //rffbuf[pos++]= *pucAux;
+		 rffbuf[pos++]= msg->l2_IEListPresent;
+
+		openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+   }
+#endif
+
+
+
    if (msg->l2_IEListPresent == IEEE154_IELIST_NO) {
       return sixtop_send_internal(
          msg,
@@ -339,7 +371,7 @@ owerror_t sixtop_send(OpenQueueEntry_t *msg) {
 
 void task_sixtopNotifSendDone() {
    OpenQueueEntry_t* msg;
-   
+
    // get recently-sent packet from openqueue
    msg = openqueue_sixtopGetSentPacket();
    if (msg==NULL) {
@@ -445,6 +477,34 @@ void task_sixtopNotifReceive() {
    // toss the header IEs
    packetfunctions_tossHeader(msg,lenIE);
    
+#if ENABLE_DEBUG_RFF
+   {
+		open_addr_t* address;
+		uint8_t pos=0;
+
+		address =  &(msg->l2_nextORpreviousHop);
+
+		rffbuf[pos++]= RFF_SIXTOP_RX;
+		rffbuf[pos++]= 0x11;
+		rffbuf[pos++]= msg->l2_frameType;
+		rffbuf[pos++]= msg->length;
+  	    rffbuf[pos++]= address->type;
+
+  	    if (address->type == 3)
+		{
+			rffbuf[pos++]= address->addr_128b[14];
+			rffbuf[pos++]= address->addr_128b[15];
+		}
+		else //considero igual a 2
+		{
+			rffbuf[pos++]= address->addr_64b[6];
+			rffbuf[pos++]= address->addr_64b[7];
+		}
+
+		openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+   }
+#endif
+
    // update neighbor statistics
    neighbors_indicateRx(
       &(msg->l2_nextORpreviousHop),
@@ -548,6 +608,7 @@ owerror_t sixtop_send_internal(
    uint8_t iePresent, 
    uint8_t frameVersion) {
 
+
    // assign a number of retries
    if (
       packetfunctions_isBroadcastMulticast(&(msg->l2_nextORpreviousHop))==TRUE
@@ -603,6 +664,7 @@ The body of this function executes one of the MAC management task.
 void timer_sixtop_management_fired(void) {
    sixtop_vars.mgtTaskCounter = (sixtop_vars.mgtTaskCounter+1)%ADVTIMEOUT;
    
+#if (IEEE802154E_RIT == 0)
    switch (sixtop_vars.mgtTaskCounter) {
       case 0:
          // called every ADVTIMEOUT seconds
@@ -617,6 +679,11 @@ void timer_sixtop_management_fired(void) {
          sixtop_sendKA();
          break;
    }
+#else
+   // called every second, except twice every ADVTIMEOUT seconds
+   sixtop_sendKA();
+
+#endif
 }
 
 /**

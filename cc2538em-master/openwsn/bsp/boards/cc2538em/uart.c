@@ -22,6 +22,7 @@
 #include "debugpins.h"
 #include "osens.h"
 #include "osens_itf.h"
+#include "openserial.h"
 
 //=========================== defines =========================================
 
@@ -38,11 +39,25 @@ typedef struct {
 uart_vars_t uart_vars;
 extern uint8_t frame[OSENS_MAX_FRAME_SIZE];
 extern uint8_t num_rx_bytes;
+kick_scheduler_t uart1_tx_isr(void);
+kick_scheduler_t uart1_rx_isr(void);
 
+#if (DBG_USING_UART1 == 1)
+uart_vars_t uart1_vars;
+extern uint8_t frame1[OSENS_MAX_FRAME_SIZE];
+extern uint8_t num_rx_bytes1;
+kick_scheduler_t uart1_tx_isr(void);
+kick_scheduler_t uart1_rx_isr(void);
+#endif
 //=========================== prototypes ======================================
 
 static void uart_isr_private(void);
-
+#if (DBG_USING_UART1 == 1)
+static  void uart1_isr_private(void);
+uart_vars_t uart1_vars;
+#else
+void uart1_isr_private(void);
+#endif
 //=========================== public ==========================================
 
 void uart_init() {
@@ -56,6 +71,8 @@ void uart_init() {
    // OpenBase or XBee Explorer has fully initialized
    for(i=0;i<320000;i++);
    
+   // ENABLE UART 0 - STANDARD
+
    // Disable UART function
    UARTDisable(UART0_BASE);
 
@@ -173,9 +190,136 @@ kick_scheduler_t uart_rx_isr() {
    return DO_NOT_KICK_SCHEDULER;
 }
 
+/*  =================================================
+ *  This routines is used when wish to use the UART1 as the debug
+ *  the idea is have the same default debug in the UART0 and only
+ *  the especial debugs in the UART1
+ */
+
+#if (DBG_USING_UART1 == 1)
+
+void uart1_init() {
+   register uint32_t i;
+
+   // reset local variables
+   memset(&uart1_vars,0,sizeof(uart_vars_t));
+
+   // wait some time before initializing UART, since don't want the
+   // OpenMoteCC2538 to start generating data before the FTDI chip on the
+   // OpenBase or XBee Explorer has fully initialized
+   for(i=0;i<320000;i++);
+
+   // Disable UART function
+   UARTDisable(DBG_UART1_BASE);
+   // Disable all UART module interrupts
+   UARTIntDisable(DBG_UART1_BASE, 0x1FFF);
+
+   UARTClockSourceSet(DBG_UART1_BASE, UART_CLOCK_PIOSC);
+
+	IOCPinConfigPeriphOutput (DBG_UART1_BUS_BASE, DBG_UART1_TXD, DBG_MUX_UART1_TXD);
+	GPIOPinTypeUARTOutput    (DBG_UART1_BUS_BASE, DBG_UART1_TXD);
+	IOCPinConfigPeriphInput  (DBG_UART1_BUS_BASE, DBG_UART1_RXD, DBG_MUX_UART1_RXD);
+	GPIOPinTypeUARTInput     (DBG_UART1_BUS_BASE, DBG_UART1_RXD);
+
+   UARTConfigSetExpClk(DBG_UART1_BASE, SysCtrlIOClockGet(), 115200,
+                      (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
+
+   // Enable UART hardware
+   UARTEnable(DBG_UART1_BASE);
+
+   // Disable FIFO as we only one 1byte buffer
+   UARTFIFODisable(DBG_UART1_BASE);
+
+   // Raise interrupt at end of tx (not by fifo)
+   UARTTxIntModeSet(DBG_UART1_BASE, UART_TXINT_MODE_EOT);
+
+   // Register isr in the nvic and enable isr at the nvic
+   UARTIntRegister(DBG_UART1_BASE, uart1_isr_private);
+
+   IntEnable(DBG_INT_UART1);
+
+}
+void uart1_enableInterrupts(){
+    UARTIntEnable(DBG_UART1_BASE, UART_INT_RX | UART_INT_TX);
+}
+
+void uart1_disableInterrupts(){
+    UARTIntDisable(DBG_UART1_BASE, UART_INT_RX | UART_INT_TX);
+}
+
+void uart1_clearRxInterrupts(){
+    UARTIntClear(DBG_UART1_BASE, UART_INT_RX);
+}
+
+void uart1_clearTxInterrupts(){
+    UARTIntClear(DBG_UART1_BASE, UART_INT_TX);
+}
+
+void  uart1_writeByte(uint8_t byteToWrite){
+	UARTCharPut(DBG_UART1_BASE, byteToWrite);
+}
+
+uint8_t uart1_readByte(){
+	 int32_t i32Char;
+     i32Char = UARTCharGet(DBG_UART1_BASE);
+	 return (uint8_t)(i32Char & 0xFF);
+}
+
+#if (DBG_USING_UART1 == 1)
+
+kick_scheduler_t uart1_tx_isr() {
+   uart1_clearTxInterrupts(); // TODO: do not clear, but disable when done
+   if (uart1_vars.txCb != NULL) {
+       uart1_vars.txCb();
+   }
+   return DO_NOT_KICK_SCHEDULER;
+}
+
+kick_scheduler_t uart1_rx_isr() {
+   uart1_clearRxInterrupts(); // TODO: do not clear, but disable when done
+   if (uart1_vars.txCb != NULL) {
+       uart1_vars.rxCb();
+   }
+   return DO_NOT_KICK_SCHEDULER;
+}
+
+void uart1_setCallbacks(uart_tx_cbt txCb, uart_rx_cbt rxCb) {
+    uart1_vars.txCb = txCb;
+    uart1_vars.rxCb = rxCb;
+}
+#endif
+
+static void uart1_isr_private(void)
+{
+	uint32_t reg;
+	debugpins_isr_set();
+
+	// Read interrupt source
+	reg = UARTIntStatus(DBG_UART1_BASE, true);
+
+	// Clear UART interrupt in the NVIC
+	IntPendClear(DBG_INT_UART1);
+
+	// Process TX interrupt
+	if(reg & UART_INT_TX){
+	     uart1_tx_isr();
+	}
+
+	// Process RX interrupt
+	if(reg & (UART_INT_RX )) {
+		uart1_rx_isr();
+	}
+
+}
+
+
+
+#endif
 
 //=========================== SENS_ITF routines ==============================
 //
+
+#if (DBG_USING_UART1 == 0)
 
 void uart1_init() {
    // reset local variables
@@ -243,7 +387,7 @@ uint8_t uart1_readByte(){
 	 return (uint8_t)(i32Char & 0xFF);
 }
 
-
+#endif
 
 //=========================== SENS_ITF Interrupt handlers ==============================
 

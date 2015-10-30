@@ -18,8 +18,11 @@
 #include "leds.h"
 #include "uart.h"
 #include "debugpins.h"
-#if ((MYLINKXS_REMOTE_CONTROL == 1) || (MYLINKXS_LIGHT_CONTROL == 1))
+#if MYLINKXS_SENSORS
 #include "mylinkxs.h"
+#if SENSOR_ACCEL
+#include "acc_bma250.h"
+#endif
 #endif
 #define TRACE_ON 0
 
@@ -28,11 +31,32 @@
 
 #define DBG_READ  0
 #define DBG_WRITE 1
+static uint8_t rffbuf[30];
 
 #if (MYLINKXS_REMOTE_CONTROL == 1)
 uint8_t flagwriteenable=0;
 void simula_envio_cmd(osens_point_t *pt);
 
+#endif
+
+
+#if (SONOMA14 == 1)
+//enderecos SONOMA
+#define SONOMA_ADDR_CMD        0x00
+#define SONOMA_ADDR_FWDATE     0x01
+#define SONOMA_ADDR_SAMPLES    0x08     //DEFAULT 400
+#define SONOMA_ADDR_S0_GAIN    0x0D
+#define SONOMA_ADDR_S1_GAIN    0x0C
+#define SONOMA_ADDR_S2_GAIN    0x0F
+#define SONOMA_ADDR_S3_GAIN    0x0E
+#define SONOMA_ADDR_S0_OFFSET  0x10
+#define SONOMA_ADDR_S2_OFFSET  0x11
+#define SONOMA_ADDR_S1_OFFSET  0x12
+#define SONOMA_ADDR_S3_OFFSET  0x13
+#define SONOMA_ADDR_T_GAIN     0x14
+#define SONOMA_ADDR_T_OFFSET   0x15
+#define SONOMA_ADDR_VA_RMS     0x2B
+#define SONOMA_ADDR_UART_BAUD  0xB1  //UART Baudrate 9600
 #endif
 
 enum {
@@ -87,15 +111,6 @@ enum {
 	OSENS_STATE_EXEC_ERROR
 };
 
-typedef struct osens_mote_sm_state_s
-{
-	volatile uint16_t trmout_counter;
-	volatile uint16_t trmout;
-	volatile uint8_t point_index;
-	volatile uint8_t frame_arrived;
-	volatile uint8_t state;
-	volatile uint8_t retries;
-} osens_mote_sm_state_t;
 
 typedef uint8_t (*osens_mote_sm_func_t)(osens_mote_sm_state_t *st);
 
@@ -383,12 +398,12 @@ static uint8_t osens_mote_sm_func_proc_wr_pt(osens_mote_sm_state_t *st)
     // retry ?
     if (size != ans_size || ans.hdr.addr != (OSENS_REGMAP_WRITE_POINT_DATA_1 + point))
     {
-	   DBG_LOG(DBG_WRITE,("WrRes ERROR I:%x R:%x L:%x PAR:%x \n",st->point_index,st->retries,size,ans.hdr.addr));
+	  // DBG_LOG(DBG_WRITE,("WrRes ERROR I:%x R:%x L:%x PAR:%x \n",st->point_index,st->retries,size,ans.hdr.addr));
        return OSENS_STATE_EXEC_OK;
     }
 
     // ok,  go to the next
-    DBG_LOG(DBG_WRITE,("WrRes OK I:%x R:%x L:%x PAR:%x \n",st->point_index,st->retries,size,ans.hdr.addr));
+    //DBG_LOG(DBG_WRITE,("WrRes OK I:%x R:%x L:%x PAR:%x \n",st->point_index,st->retries,size,ans.hdr.addr));
     schedule.write.cons = PC_INC_QUEUE(schedule.write.cons, OSENS_MAX_POINTS);
     st->retries = 0;
 
@@ -405,7 +420,7 @@ static uint8_t osens_mote_sm_func_wr_pt(osens_mote_sm_state_t *st)
 
 	leds_debug_toggle();
 
-    DBG_LOG(0,("WrReq0=%x %x %x\n",c,p,st->retries));
+    //DBG_LOG(0,("WrReq0=%x %x %x\n",c,p,st->retries));
  	// end of point writing
 	if(c == p)
 		return OSENS_STATE_EXEC_WAIT_ABORT;
@@ -428,23 +443,19 @@ static uint8_t osens_mote_sm_func_wr_pt(osens_mote_sm_state_t *st)
     size = 5 + datatype_sizes[sensor_points.points[point].desc.type];
     memcpy(&cmd.payload.point_value_cmd, &sensor_points.points[point].value, sizeof(osens_point_t));
 
-    DBG_LOG(DBG_WRITE,("WrReq I:%x T:%x V:%x\n",point, sensor_points.points[point].desc.type, sensor_points.points[point].value.value.u16));
+    //DBG_LOG(DBG_WRITE,("WrReq I:%x T:%x V:%x\n",point, sensor_points.points[point].desc.type, sensor_points.points[point].value.value.u16));
 
     return osens_mote_pack_send_frame(&cmd,size);
 }
 
-static uint8_t osens_mote_sm_func_run_sch(osens_mote_sm_state_t *st)
-{
+
+#if (USE_SPI_INTERFACE == 0)
+static uint8_t osens_mote_sm_func_run_sch(osens_mote_sm_state_t *st){
     uint8_t n;
 
 	// priorize writings over data scan/schedule execution
 	if(schedule.write.prod != schedule.write.cons)
 	{
-	    DBG_LOG(DBG_WRITE,("NewWr P:%d C:%d \n",schedule.write.prod,schedule.write.cons));
-
-#if TRACE_ON == 1
-        printf("==> New writing item to be consumed (P: %d <> C: d%)\n", schedule.write.prod, schedule.write.cons);
-#endif
     	st->retries = 0;
 		return OSENS_STATE_EXEC_ERROR;
 	}
@@ -463,7 +474,7 @@ static uint8_t osens_mote_sm_func_run_sch(osens_mote_sm_state_t *st)
             // index: point index in the points database
             uint8_t index = schedule.points[n].index;
 
-    	    DBG_LOG(0,("Sch n:%d idx:%d \n",n,schedule.points[n].index));
+    	    //DBG_LOG(0,("Sch n:%d idx:%d \n",n,schedule.points[n].index));
 
             schedule.scan.index[schedule.scan.num_of_points] = index;
         	schedule.scan.num_of_points++;
@@ -478,23 +489,76 @@ static uint8_t osens_mote_sm_func_run_sch(osens_mote_sm_state_t *st)
     	st->point_index = 0;
     	st->retries = 0;
 
-#if TRACE_ON == 1
-    {
-            OS_UTIL_LOG(1, ("\n"));
-            OS_UTIL_LOG(1, ("Next Scan\n"));
-            OS_UTIL_LOG(1, ("=========\n"));
-            for (n = 0; n < schedule.scan.num_of_points; n++)
-            {
-                OS_UTIL_LOG(1, ("--> %u [%u]\n", n,schedule.scan.index[n]));
-            }
-    }
-#endif
-
-    	return OSENS_STATE_EXEC_WAIT_ABORT;
+     	return OSENS_STATE_EXEC_WAIT_ABORT;
     }
     else
     	return OSENS_STATE_EXEC_WAIT_OK;
+
 }
+
+#else
+
+static uint8_t osens_mote_sm_func_run_sch(osens_mote_sm_state_t *st) {
+#if (SONOMA14 == 1)
+    uint32_t param[5];
+#else
+    int8_t i8Data[6] = {0};
+    uint16_t u16X, u16Y, u16Z;
+#endif
+
+    leds_debug_toggle();
+
+#if (SONOMA14 == 1)
+
+    param[0] = read_reg(SONOMA_ADDR_VA_RMS);
+    param[1] = read_reg(SONOMA_ADDR_S0_GAIN);
+    param[2] = read_reg(SONOMA_ADDR_S1_GAIN);
+    param[3] = read_reg(SONOMA_ADDR_S0_OFFSET);
+    param[4] = read_reg(SONOMA_ADDR_S1_OFFSET);
+
+    sensor_points.points[0].value.value.u32 = param[0];
+    sensor_points.points[1].value.value.u32 = param[1];
+    sensor_points.points[2].value.value.u32 = param[3];
+
+#else
+    accReadReg2(ACC_X_LSB, (uint8_t *)i8Data, 6);
+
+    u16X = (((uint16_t)(i8Data[1]) << 2) | ((i8Data[0] >> 6) & 0x03));
+    u16Y = (((uint16_t)(i8Data[3]) << 2) | ((i8Data[2] >> 6) & 0x03));
+    u16Z = (((uint16_t)(i8Data[5]) << 2) | ((i8Data[4] >> 6) & 0x03));
+
+    sensor_points.points[0].value.value.u16 = u16X;
+    sensor_points.points[1].value.value.u16 = u16Y;
+    sensor_points.points[2].value.value.u16 = u16Z;
+#endif
+
+#if ENABLE_DEBUG_RFF
+	 uint8_t pos=0;
+	 uint8_t *paux;
+
+	 rffbuf[pos++]= 0x80;
+	 paux = (uint8_t*) &param[0];
+	 rffbuf[pos++]= *paux++;
+	 rffbuf[pos++]= *paux++;
+	 rffbuf[pos++]= *paux++;
+	 rffbuf[pos++]= *paux++;
+	 paux = (uint8_t*) &param[1];
+	 rffbuf[pos++]= *paux++;
+	 rffbuf[pos++]= *paux++;
+	 rffbuf[pos++]= *paux++;
+	 rffbuf[pos++]= *paux++;
+	 paux = (uint8_t*) &param[2];
+	 rffbuf[pos++]= *paux++;
+	 rffbuf[pos++]= *paux++;
+	 rffbuf[pos++]= *paux++;
+	 rffbuf[pos++]= *paux++;
+
+     openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+#endif
+
+	return OSENS_STATE_EXEC_WAIT_OK;
+}
+#endif
 
 static uint8_t osens_mote_sm_func_build_sch(osens_mote_sm_state_t *st)
 {
@@ -694,13 +758,11 @@ static uint8_t osens_mote_sm_func_req_ver(osens_mote_sm_state_t *st)
 static uint8_t osens_mote_sm_func_init(osens_mote_sm_state_t *st)
 {
 	uint8_t ret = OSENS_STATE_EXEC_OK;
-#if MYLINKXS_REMOTE_CONTROL
+#if (MYLINKXS_REMOTE_CONTROL == 1) ||  (SENSOR_ACCEL == 1) ||  (SONOMA14 == 1)
 	uint8_t pointpos=0;
 #endif
 
 	leds_error_on();
-
-	DBG_LOG(1,("INIT \n"));
 
 	memset(&cmd, 0, sizeof(cmd));
 	memset(&ans, 0, sizeof(ans));
@@ -768,8 +830,86 @@ static uint8_t osens_mote_sm_func_init(osens_mote_sm_state_t *st)
 
 #endif
 
+#if (SENSOR_ACCEL == 1)
+    strcpy((void *)board_info.model, (void *) "accbma");
+    board_info.model[OSENS_MODEL_NAME_SIZE-1] = 0;
+    strcpy((void *)board_info.manufactor,(void *) "TexasIns");
+    board_info.model[OSENS_MANUF_NAME_SIZE-1] = 0;
+    board_info.sensor_id = 0x1;
+    board_info.hardware_revision = 0x01;
+    board_info.num_of_points = 3;
+    board_info.capabilities = 0;
+
+    sensor_points.num_of_points = 3;
+    pointpos=0;
+    strcpy((char *)sensor_points.points[pointpos].desc.name, "EIXO_X");
+    sensor_points.points[pointpos].desc.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].desc.unit = 0; // TDB
+    sensor_points.points[pointpos].desc.access_rights = SENS_ITF_ACCESS_READ_ONLY;
+    sensor_points.points[pointpos].desc.sampling_time_x250ms = 1;
+    sensor_points.points[pointpos].value.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].value.value.u16 = 0;
+
+    pointpos++;
+    strcpy((char *)sensor_points.points[pointpos].desc.name, "EIXO_Y");
+    sensor_points.points[pointpos].desc.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].desc.unit = 0; // TDB
+    sensor_points.points[pointpos].desc.access_rights = SENS_ITF_ACCESS_READ_ONLY;
+    sensor_points.points[pointpos].desc.sampling_time_x250ms = 1;
+    sensor_points.points[pointpos].value.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].value.value.u16 = 0;
+
+    pointpos++;
+    strcpy((char *)sensor_points.points[pointpos].desc.name, "EIXO_Z");
+    sensor_points.points[pointpos].desc.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].desc.unit = 0; // TDB
+    sensor_points.points[pointpos].desc.access_rights = SENS_ITF_ACCESS_READ_ONLY;
+    sensor_points.points[pointpos].desc.sampling_time_x250ms = 1;
+    sensor_points.points[pointpos].value.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].value.value.u16 = 0;
+
+#endif
 
 
+#if (SONOMA14 == 1)
+    strcpy((void *)board_info.model, (void *) "sonoma ");
+    board_info.model[OSENS_MODEL_NAME_SIZE-1] = 0;
+    strcpy((void *)board_info.manufactor,(void *) "Maxim  ");
+    board_info.model[OSENS_MANUF_NAME_SIZE-1] = 0;
+    board_info.sensor_id = 0x1;
+    board_info.hardware_revision = 0x01;
+    board_info.num_of_points = 3;
+    board_info.capabilities = 0;
+
+    sensor_points.num_of_points = 3;
+    pointpos=0;
+    strcpy((char *)sensor_points.points[pointpos].desc.name, "VA_RMS");
+    sensor_points.points[pointpos].desc.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].desc.unit = 0; // TDB
+    sensor_points.points[pointpos].desc.access_rights = SENS_ITF_ACCESS_READ_ONLY;
+    sensor_points.points[pointpos].desc.sampling_time_x250ms = 1;
+    sensor_points.points[pointpos].value.type = SENS_ITF_DT_U32;
+    sensor_points.points[pointpos].value.value.u32 = 0;
+
+    pointpos++;
+    strcpy((char *)sensor_points.points[pointpos].desc.name, "S0_GAIN");
+    sensor_points.points[pointpos].desc.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].desc.unit = 0; // TDB
+    sensor_points.points[pointpos].desc.access_rights = SENS_ITF_ACCESS_READ_ONLY;
+    sensor_points.points[pointpos].desc.sampling_time_x250ms = 1;
+    sensor_points.points[pointpos].value.type = SENS_ITF_DT_U32;
+    sensor_points.points[pointpos].value.value.u32 = 0;
+
+    pointpos++;
+    strcpy((char *)sensor_points.points[pointpos].desc.name, "S1_GAIN");
+    sensor_points.points[pointpos].desc.type = SENS_ITF_DT_U16;
+    sensor_points.points[pointpos].desc.unit = 0; // TDB
+    sensor_points.points[pointpos].desc.access_rights = SENS_ITF_ACCESS_READ_ONLY;
+    sensor_points.points[pointpos].desc.sampling_time_x250ms = 1;
+    sensor_points.points[pointpos].value.type = SENS_ITF_DT_U32;
+    sensor_points.points[pointpos].value.value.u32 = 0;
+
+#endif
 
 	return ret;
 }
@@ -780,7 +920,7 @@ void osens_mote_sm(void)
 
 #if TRACE_ON == 1
 	uint8_t ls = sm_state.state;
-	#endif
+#endif
 
 	ret = osens_mote_sm_table[sm_state.state].func(&sm_state);
 
@@ -843,7 +983,29 @@ static void osens_mote_tick(void)
 }
 #endif
 
-#if MYLINKXS_REMOTE_CONTROL
+#if ((SENSOR_ACCEL == 1) || (SONOMA14 == 1))
+const osens_mote_sm_table_t osens_mote_sm_table[] =
+{     //{ func,                                next_state,                   abort_state,              error_state       }
+		{ osens_mote_sm_func_init,             OSENS_STATE_BUILD_SCH,        OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_INIT
+		{ osens_mote_sm_func_req_ver,          OSENS_STATE_WAIT_ITF_VER_ANS, OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_SEND_ITF_VER
+		{ osens_mote_sm_func_wait_ans,         OSENS_STATE_PROC_ITF_VER,     OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_WAIT_ITF_VER_ANS
+		{ osens_mote_sm_func_proc_itf_ver_ans, OSENS_STATE_SEND_BRD_ID,      OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_PROC_ITF_VER
+		{ osens_mote_sm_func_req_brd_id,       OSENS_STATE_WAIT_BRD_ID_ANS,  OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_SEND_BRD_ID
+		{ osens_mote_sm_func_wait_ans,         OSENS_STATE_PROC_BRD_ID,      OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_WAIT_BRD_ID_ANS
+		{ osens_mote_sm_func_proc_brd_id_ans,  OSENS_STATE_SEND_PT_DESC,     OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_PROC_BRD_ID
+		{ osens_mote_sm_func_req_pt_desc,      OSENS_STATE_WAIT_PT_DESC_ANS, OSENS_STATE_BUILD_SCH,    OSENS_STATE_INIT  }, // OSENS_STATE_SEND_PT_DESC
+        { osens_mote_sm_func_wait_ans,         OSENS_STATE_PROC_PT_DESC,     OSENS_STATE_SEND_PT_DESC, OSENS_STATE_INIT  }, // OSENS_STATE_WAIT_PT_DESC_ANS
+		{ osens_mote_sm_func_pt_desc_ans,      OSENS_STATE_SEND_PT_DESC,     OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_PROC_PT_DESC
+		{ osens_mote_sm_func_build_sch,        OSENS_STATE_RUN_SCH,          OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_BUILD_SCH
+		{ osens_mote_sm_func_run_sch,          OSENS_STATE_RUN_SCH,          OSENS_STATE_SEND_PT_VAL,  OSENS_STATE_WR_PT }, // OSENS_STATE_RUN_SCH
+		{ osens_mote_sm_func_req_pt_val,       OSENS_STATE_WAIT_PT_VAL_ANS,  OSENS_STATE_RUN_SCH,      OSENS_STATE_INIT  }, // OSENS_STATE_SEND_PT_VAL
+		{ osens_mote_sm_func_wait_ans,         OSENS_STATE_PROC_PT_VAL,      OSENS_STATE_SEND_PT_VAL,  OSENS_STATE_INIT  }, // OSENS_STATE_WAIT_PT_VAL_ANS
+		{ osens_mote_sm_func_pt_val_ans,       OSENS_STATE_SEND_PT_VAL,      OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_PROC_PT_VAL
+		{ osens_mote_sm_func_wr_pt,            OSENS_STATE_WAIT_WR_PT_ANS,   OSENS_STATE_RUN_SCH,      OSENS_STATE_INIT  }, // OSENS_STATE_WR_PT
+		{ osens_mote_sm_func_wait_ans,         OSENS_STATE_PROC_WR_PT_ANS,   OSENS_STATE_WR_PT,        OSENS_STATE_INIT  }, // OSENS_STATE_WAIT_WR_PT_ANS
+		{ osens_mote_sm_func_proc_wr_pt,       OSENS_STATE_WR_PT,            OSENS_STATE_INIT,         OSENS_STATE_INIT } // OSENS_STATE_PROC_WR_PT_ANS
+};
+#elif (MYLINKXS_REMOTE_CONTROL == 1)
 const osens_mote_sm_table_t osens_mote_sm_table[] =
 {     //{ func,                                next_state,                   abort_state,              error_state       }
 		{ osens_mote_sm_func_init,             OSENS_STATE_BUILD_SCH,        OSENS_STATE_INIT,         OSENS_STATE_INIT  }, // OSENS_STATE_INIT
@@ -888,6 +1050,7 @@ const osens_mote_sm_table_t osens_mote_sm_table[] =
 		{ osens_mote_sm_func_proc_wr_pt,       OSENS_STATE_WR_PT,            OSENS_STATE_INIT,         OSENS_STATE_INIT } // OSENS_STATE_PROC_WR_PT_ANS
 };
 #endif
+
 
 #if MYLINKXS_LIGHT_CONTROL
 uint8_t osens_init(void)
@@ -949,11 +1112,21 @@ uint8_t osens_mote_init(void)
 
 uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
 {
+
+#if 0
 	// switch on the light pulse (50 ms)
 	light_on();
 
-	opentimers_start(1000,TIMER_ONESHOT,TIME_MS,light_timer);
+	//opentimers_start(1000,TIMER_ONESHOT,TIME_MS,light_timer);
+#else
+    if (point->value.u8 > 0){
+    	light_on();
+    }
+    else{
+    	light_off();
+    }
 
+#endif
 	return 1;
 }
 
@@ -993,7 +1166,11 @@ uint8_t osens_mote_init(void)
 	IOCPadConfigSet(BSP_LIGHT_BOTAO_BASE, BSP_LIGHT_BOTAO, IOC_OVERRIDE_PUE);
 #endif
 
-	//buBufFlush();
+#if  (SENSOR_ACCEL == 1)
+    // Initialize accelerometer
+    accInit();
+#endif
+
     opentimers_start(OSENS_SM_TICK_MS, TIMER_PERIODIC, TIME_MS, (opentimers_cbt) osens_mote_tick);
 
     return 0;
@@ -1016,10 +1193,11 @@ uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
 			if (pn == c)
             {
 #if TRACE_ON == 1
-                printf("==> No space in writing queue (P: %d->%d, C: %d)\n",p,pn,c);
-#endif
+//                printf("==> No space in writing queue (P: %d->%d, C: %d)\n",p,pn,c);
+
     		    DBG_LOG(DBG_WRITE,("QueueFull (P: %d->%d, C: %d)\n",p,pn,c));
-				return 0;
+#endif
+    		    return 0;
             }
 
 #if TRACE_ON == 1
@@ -1029,7 +1207,7 @@ uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
 #if MYLINKXS_REMOTE_CONTROL
 			schedule.write.index[p] = index;
 			schedule.write.prod = pn;
-		    DBG_LOG(0,("WrReq=%x %x P:%d->%d c:%d\n",index,point->value,p,pn,c));
+		    //DBG_LOG(0,("WrReq=%x %x P:%d->%d c:%d\n",index,point->value,p,pn,c));
 #else
 			schedule.write.index[p] = index;
 			sensor_points.points[index].value.value = point->value;
@@ -1072,10 +1250,10 @@ uint8_t osens_get_brd_desc(osens_brd_id_t *brd)
 
 uint8_t osens_get_pdesc(uint8_t index, osens_point_desc_t *desc)
 {
-#if 1 //teste rff
+#if (MYLINKXS_LIGHT_CONTROL == 0)
 	if((sm_state.state >= OSENS_STATE_RUN_SCH) && (index <= sensor_points.num_of_points))
 	{
-		memcpy(desc,&sensor_points.points[0].desc,sizeof(osens_point_desc_t));
+		memcpy(desc,&sensor_points.points[index].desc,sizeof(osens_point_desc_t));
 		return 1;
 	}
 	else
@@ -1137,7 +1315,7 @@ uint8_t osens_get_point(uint8_t index, osens_point_t *point)
 *
 * @return   Returns the number of bytes actually copied to the TX buffer.
 ******************************************************************************/
-
+#if (USE_SPI_INTERFACE == 0)
 uint8_t osens_mote_send_frame(uint8_t *frame, uint8_t size)
 {
  	uint16_t ui16Length=size;
@@ -1152,7 +1330,7 @@ uint8_t osens_mote_send_frame(uint8_t *frame, uint8_t size)
 
     return ((uint8_t) ui16Length);
 }
-
+#endif
 /**************************************************************************//**
 * @brief    This function pushes a byte from the UART RX FIFO to the BSP UART
 *           RX buffer. The function handles RX buffer wrap-around, but does not

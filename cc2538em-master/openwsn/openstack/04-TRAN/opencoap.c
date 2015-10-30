@@ -8,6 +8,7 @@
 #include "idmanager.h"
 #include "opentimers.h"
 #include "scheduler.h"
+#include "IEEE802154E.h"
 
 //=========================== defines =========================================
 
@@ -16,6 +17,14 @@
 //=========================== variables =======================================
 
 opencoap_vars_t opencoap_vars;
+
+#if (DEBUG_LOG_RIT  == 1)
+//extern ieee154e_vars_t    ieee154e_vars;
+//extern ieee154e_stats_t   ieee154e_stats;
+//extern ieee154e_dbg_t     ieee154e_dbg;
+static uint8_t rffbuf[10];
+
+#endif
 
 //=========================== prototype =======================================
 
@@ -71,7 +80,21 @@ void opencoap_receive(OpenQueueEntry_t* msg) {
    index++;
    coap_header.messageID     = msg->payload[index]*256+msg->payload[index+1];
    index+=2;
-   
+
+#if (DEBUG_LOG_RIT == 1)
+	   {
+		 uint8_t pos=0;
+
+		   rffbuf[pos++]= RFF_COMPONENT_OPENCOAP_RX;
+		   rffbuf[pos++]= 0x01;
+		   rffbuf[pos++]= (uint8_t) msg->l4_protocol;
+		   rffbuf[pos++]= (uint8_t) coap_header.Ver;
+		   rffbuf[pos++]= (uint8_t) coap_header.TKL;
+
+		   openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+	   }
+#endif
+
    // reject unsupported header
    if (coap_header.Ver!=COAP_VERSION || coap_header.TKL>COAP_MAX_TKL) {
       openserial_printError(
@@ -265,6 +288,22 @@ void opencoap_receive(OpenQueueEntry_t* msg) {
    
    if ((openudp_send(msg))==E_FAIL) {
       openqueue_freePacketBuffer(msg);
+   }
+   else
+   {
+#if (DEBUG_LOG_RIT == 1)
+	   {
+		 uint8_t pos=0;
+
+		   rffbuf[pos++]= RFF_COMPONENT_OPENCOAP_TX;
+		   rffbuf[pos++]= 0x01;
+		   rffbuf[pos++]= (uint8_t) msg->creator;
+		   rffbuf[pos++]= (uint8_t) msg->l4_protocol;
+		   rffbuf[pos++]= (uint8_t) msg->l4_sourcePortORicmpv6Type;
+
+		   openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+	   }
+#endif
    }
 }
 

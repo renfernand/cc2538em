@@ -1,5 +1,6 @@
 #include "opendefs.h"
 #include "IEEE802154E.h"
+#if (IEEE802154E_RIT == 0)
 #include "radio.h"
 #include "radiotimer.h"
 #include "IEEE802154.h"
@@ -17,11 +18,15 @@
 #include "processIE.h"
 
 //=========================== variables =======================================
+uint8_t rffflag=0;
 
 ieee154e_vars_t    ieee154e_vars;
 ieee154e_stats_t   ieee154e_stats;
 ieee154e_dbg_t     ieee154e_dbg;
 
+#if DEBUG_LOG_RIT
+static uint8_t rffbuf[10];
+#endif
 //=========================== prototypes ======================================
 
 // SYNCHRONIZING
@@ -856,6 +861,12 @@ port_INLINE void activity_ti1ORri1() {
             ieee154e_vars.dataToSend = NULL;
          }
          if (ieee154e_vars.dataToSend!=NULL) {   // I have a packet to send
+
+        	 if (rffflag)
+        	 {
+        		 rffflag = 0;
+        	 }
+
             // change state
             changeState(S_TXDATAOFFSET);
             // change owner
@@ -1622,6 +1633,18 @@ port_INLINE void activity_ri9(PORT_RADIOTIMER_WIDTH capturedTime) {
       synchronizePacket(ieee154e_vars.syncCapturedTime);
    }
    
+#if 0 //(DEBUG_LOG_RIT  == 1)
+   {
+ 	 //uint32_t  capturetime=radio_getTimerValue();
+         //uint8_t   *pucAux = (uint8_t *) &capturetime;
+   	 uint8_t   pos=0;
+
+	rffbuf[pos++]= 0x15;
+	rffbuf[pos++]= 0x01;
+	openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+   }
+#endif
+
    // inform upper layer of reception (after ACK sent)
    notif_receive(ieee154e_vars.dataReceived);
    
@@ -1879,6 +1902,18 @@ void notif_receive(OpenQueueEntry_t* packetReceived) {
    // COMPONENT_IEEE802154E_TO_SIXTOP so sixtop can knows it's for it
    packetReceived->owner          = COMPONENT_IEEE802154E_TO_SIXTOP;
 
+#if 0 //(DEBUG_LOG_RIT  == 1)
+   {
+ 	 //uint32_t  capturetime=radio_getTimerValue();
+         //uint8_t   *pucAux = (uint8_t *) &capturetime;
+   	 uint8_t   pos=0;
+
+	rffbuf[pos++]= 0x15;
+	rffbuf[pos++]= 0x01;
+	openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+   }
+#endif
+
    // post RES's Receive task
    scheduler_push_task(task_sixtopNotifReceive,TASKPRIO_SIXTOP_NOTIF_RX);
    // wake up the scheduler
@@ -2079,3 +2114,7 @@ void endSlot() {
 bool ieee154e_isSynch(){
    return ieee154e_vars.isSync;
 }
+
+
+#endif //(IEEE802154E_RIT == 0)
+

@@ -220,6 +220,27 @@ bool neighbors_isStableNeighbor(open_addr_t* address) {
 }
 
 /**
+\brief Indicate whether message pending is for this probe.
+
+\param[in] address The EUI64 address of the Pending message and the Frame Received.
+
+\returns TRUE if the pending msg is for this probe, FALSE otherwise.
+*/
+bool neighbors_ChkMsgPendIsforThisProbe(open_addr_t*  destinationAddress , open_addr_t*  probeaddress)
+{
+   uint8_t i;
+   bool    returnVal;
+
+   INTERRUPT_DECLARATION();
+   DISABLE_INTERRUPTS();
+
+   returnVal = packetfunctions_sameAddress(destinationAddress,probeaddress);
+
+   ENABLE_INTERRUPTS();
+   return returnVal;
+}
+
+/**
 \brief Indicate whether some neighbor is a preferred neighbor.
 
 \param[in] address The EUI64 address of the neighbor.
@@ -689,3 +710,8 @@ bool isThisRowMatching(open_addr_t* address, uint8_t rowNumber) {
          return FALSE;
    }
 }
+
+
+// RIT Routine
+
+

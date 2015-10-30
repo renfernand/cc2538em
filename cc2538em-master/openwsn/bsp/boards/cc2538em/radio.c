@@ -21,9 +21,12 @@
 #include "hw_rfcore_sfr.h"
 #include "cc2538rf.h"
 #include "hw_ana_regs.h"
-
+#include "IEEE802154E.h"
+#if ( ENABLE_CSMA_CA == 1)
+#include "mac_csp_tx.h"
+#include "aes.h"
+#endif
 //=========================== defines =========================================
-
 /* Bit Masks for the last byte in the RX FIFO */
 #define CRC_BIT_MASK 0x80
 #define LQI_BIT_MASK 0x7F
@@ -33,14 +36,11 @@
 
 //=========================== variables =======================================
 
-typedef struct {
-   radiotimer_capture_cbt    startFrame_cb;
-   radiotimer_capture_cbt    endFrame_cb;
-   radio_state_t             state; 
-} radio_vars_t;
 
 radio_vars_t radio_vars;
-
+#if ( ENABLE_CSMA_CA == 1)
+extern radio_csma_vars_t radio_csma_vars;
+#endif
 //=========================== prototypes ======================================
 
 port_INLINE void     enable_radio_interrupts(void);
@@ -55,7 +55,7 @@ port_INLINE void     radio_isr_internal(void);
 //=========================== public ==========================================
 
 //===== admin
-
+#if (ENABLE_CSMA_CA == 0)
 void radio_init() {
    
    // clear variables
@@ -152,6 +152,120 @@ void radio_init() {
    // change state
    radio_vars.state               = RADIOSTATE_RFOFF;
 }
+#else
+void radio_init() {
+
+   // clear variables
+   memset(&radio_vars,0,sizeof(radio_vars_t));
+
+   // change state
+   radio_vars.state          = RADIOSTATE_STOPPED;
+   //flush fifos
+   CC2538_RF_CSP_ISFLUSHRX();
+   CC2538_RF_CSP_ISFLUSHTX();
+
+   radio_off();
+
+   //disable radio interrupts
+   disable_radio_interrupts();
+
+   /*
+   This CORR_THR value should be changed to 0x14 before attempting RX. Testing has shown that
+   too many false frames are received if the reset value is used. Make it more likely to detect
+   sync by removing the requirement that both symbols in the SFD must have a correlation value
+   above the correlation threshold, and make sync word detection less likely by raising the
+   correlation threshold.
+   */
+   HWREG(RFCORE_XREG_MDMCTRL1)    = 0x14;
+   /* tuning adjustments for optimal radio performance; details available in datasheet */
+
+   HWREG(RFCORE_XREG_RXCTRL)      = 0x3F;
+   /* Adjust current in synthesizer; details available in datasheet. */
+   HWREG(RFCORE_XREG_FSCTRL)      = 0x55;
+
+     /* Makes sync word detection less likely by requiring two zero symbols before the sync word.
+      * details available in datasheet.
+      */
+   HWREG(RFCORE_XREG_MDMCTRL0)    = 0x85;
+
+//TODO!!! VERIFICAR SE PRECISA DISSO
+//#if !(defined HAL_PA_LNA || defined HAL_PA_LNA_CC2590 ||  defined HAL_PA_LNA_CC2592)
+  /* Raises the CCA threshold from about -108 dBm to about -80 dBm input level.
+   */
+   HWREG(RFCORE_XREG_CCACTRL0) = CCA_THR;  //OK
+//#endif
+
+   /* Adjust current in VCO; details available in datasheet. */
+   HWREG(RFCORE_XREG_FSCAL1)      = 0x01;
+   /* Adjust target value for AGC control loop; details available in datasheet. */
+   HWREG(RFCORE_XREG_AGCCTRL1)    = 0x15;
+
+   /* Tune ADC performance, details available in datasheet. */
+   HWREG(RFCORE_XREG_ADCTEST0)    = 0x10;
+   HWREG(RFCORE_XREG_ADCTEST1)    = 0x0E;
+   HWREG(RFCORE_XREG_ADCTEST2)    = 0x03;
+
+   //update CCA register to -81db as indicated by manual.. won't be used..
+   HWREG(RFCORE_XREG_CCACTRL0)    = 0xF8;
+   /*
+    * Changes from default values
+    * See User Guide, section "Register Settings Update"
+    */
+   HWREG(RFCORE_XREG_TXFILTCFG)   = 0x09;    /** TX anti-aliasing filter bandwidth */
+
+   HWREG(RFCORE_XREG_AGCCTRL1)    = 0x15;     /** AGC target value */
+   HWREG(ANA_REGS_O_IVCTRL)       = 0x0B;        /** Bias currents */
+
+   /* disable the CSPT register compare function */
+   HWREG(RFCORE_XREG_CSPT)        = 0xFFUL;
+
+   //TODO!!!! ATE AQUI FOI CHECADO...
+
+   /*
+    * Defaults:
+    * Auto CRC; Append RSSI, CRC-OK and Corr. Val.; CRC calculation;
+    * RX and TX modes with FIFOs
+    */
+   HWREG(RFCORE_XREG_FRMCTRL0)    = RFCORE_XREG_FRMCTRL0_AUTOCRC;
+
+   //poipoi disable frame filtering by now.. sniffer mode.
+   HWREG(RFCORE_XREG_FRMFILT0)   &= ~RFCORE_XREG_FRMFILT0_FRAME_FILTER_EN;
+
+   /* Disable source address matching and autopend */
+   HWREG(RFCORE_XREG_SRCMATCH)    = 0;
+
+   /* MAX FIFOP threshold */
+   HWREG(RFCORE_XREG_FIFOPCTRL)   = CC2538_RF_MAX_PACKET_LEN;
+
+   HWREG(RFCORE_XREG_TXPOWER)     = CC2538_RF_TX_POWER;
+   HWREG(RFCORE_XREG_FREQCTRL)    = CC2538_RF_CHANNEL_MIN;
+
+   /* Enable RF interrupts  see page 751  */
+   // enable_radio_interrupts();
+
+   //register interrupt
+   IntRegister(INT_RFCORERTX, radio_isr_internal);    // OK
+   IntRegister(INT_RFCOREERR, radio_error_isr);       // OK
+
+   IntPrioritySet(INT_RFCORERTX, HAL_INT_PRIOR_MAC);  // OK
+   IntPrioritySet(INT_RFCOREERR, HAL_INT_PRIOR_MAC);  // OK
+
+   IntEnable(INT_RFCORERTX);   //AQUI ELE SO INICIOU PONTUAL>>
+
+   /* Enable all RF Error interrupts */
+   HWREG(RFCORE_XREG_RFERRM)      = RFCORE_XREG_RFERRM_RFERRM_M; //all errors
+   IntEnable(INT_RFCOREERR);     //AQUI ELE SO INICIOU PONTUAL>>
+   //radio_on();
+
+   // change state
+   radio_vars.state               = RADIOSTATE_RFOFF;
+
+   radio_csma_init();
+
+}
+
+#endif
+
 
 void radio_setOverflowCb(radiotimer_compare_cbt cb) {
    radiotimer_setOverflowCb(cb);
@@ -238,7 +352,7 @@ void radio_rfOff() {
    radio_off();
    // wiggle debug pin
    debugpins_radio_clr();
-   leds_radio_off();
+   //leds_radio_off();
    //enable radio interrupts
    disable_radio_interrupts();
    
@@ -281,7 +395,7 @@ void radio_txEnable() {
    
    // wiggle debug pin
    debugpins_radio_set();
-   leds_radio_on();
+   //leds_radio_on();
    
    //do nothing -- radio is activated by the strobe on rx or tx
    //radio_rfOn();
@@ -290,9 +404,31 @@ void radio_txEnable() {
    radio_vars.state = RADIOSTATE_TX_ENABLED;
 }
 
+#if (ENABLE_CSMA_CA == 1)
+/*
+ * quando usando CSMA_CA tenho que esperar a linha esta desocupada...
+ * aqui ja considero que carreguei o frame e ja liguei o mecanismo do csma em load_packet
+ */
 void radio_txNow() {
    PORT_TIMER_WIDTH count;
    
+   // change state
+   radio_vars.state = RADIOSTATE_TRANSMITTING;
+
+   //enable radio interrupts
+   //enable_radio_interrupts();
+
+   // Prepare for transmit. unslotted csma_ca
+   txCsmaPrep();
+
+   // Run previously loaded CSP program for CSMA transmit.
+   macCspTxGoCsma();
+
+}
+#else
+void radio_txNow() {
+   PORT_TIMER_WIDTH count;
+
    // change state
    radio_vars.state = RADIOSTATE_TRANSMITTING;
 
@@ -312,6 +448,7 @@ void radio_txNow() {
    }
 }
 
+#endif
 //===== RX
 
 void radio_rxEnable() {
@@ -324,7 +461,7 @@ void radio_rxEnable() {
    // do nothing as we do not want to receive anything yet.
    // wiggle debug pin
    debugpins_radio_set();
-   leds_radio_on();
+   //leds_radio_on();
    
    // change state
    radio_vars.state = RADIOSTATE_LISTENING;
@@ -400,9 +537,13 @@ void radio_getReceivedFrame(uint8_t* pBufRead,
 //=========================== private =========================================
 
 port_INLINE  void enable_radio_interrupts(void){
+#if (IEEE802154E_RIT == 0)
    /* Enable RF interrupts 0, RXPKTDONE,SFD,FIFOP only -- see page 751  */
    HWREG(RFCORE_XREG_RFIRQM0) |= ((0x06|0x02|0x01) << RFCORE_XREG_RFIRQM0_RFIRQM_S) & RFCORE_XREG_RFIRQM0_RFIRQM_M;
-
+#else
+   /* Enable RF interrupts 0, RXPKTDONE,FIFOP only -- see page 751  */
+   HWREG(RFCORE_XREG_RFIRQM0) |= ((0x06|0x02) << RFCORE_XREG_RFIRQM0_RFIRQM_S) & RFCORE_XREG_RFIRQM0_RFIRQM_M;
+#endif
    /* Enable RF interrupts 1, TXDONE only */
    HWREG(RFCORE_XREG_RFIRQM1) |= ((0x02) << RFCORE_XREG_RFIRQM1_RFIRQM_S) & RFCORE_XREG_RFIRQM1_RFIRQM_M;
 }
@@ -479,7 +620,8 @@ void radio_isr_internal(void) {
    //STATUS0 Register
    // start of frame event
    if ((irq_status0 & RFCORE_SFR_RFIRQF0_SFD) == RFCORE_SFR_RFIRQF0_SFD) {
-      // change state
+#if (IEEE802154E_RIT == 0)
+	   // change state
       radio_vars.state = RADIOSTATE_RECEIVING;
       if (radio_vars.startFrame_cb!=NULL) {
          // call the callback
@@ -489,6 +631,7 @@ void radio_isr_internal(void) {
       } else {
          while(1);
       }
+#endif
    }
    
    //or RXDONE is full -- we have a packet.
@@ -533,7 +676,57 @@ void radio_isr_internal(void) {
          while(1);
       }
    }
-   
+
+#if (ENABLE_CSMA_CA == 1)
+   if ((irq_status1 & RFCORE_SFR_RFIRQF1_CSP_STOP) == RFCORE_SFR_RFIRQF1_CSP_STOP) {
+	   //MAC_MCU_CSP_STOP_DISABLE_INTERRUPT();
+	   HWREG(RFCORE_XREG_RFIRQM1) &= (~IM_CSP_STOP);
+
+	  if (HWREG(RFCORE_XREG_CSPZ) == CSPZ_CODE_TX_DONE)
+	  {
+	      // change state
+	      radio_vars.state = RADIOSTATE_TXRX_DONE;
+	      if (radio_vars.endFrame_cb!=NULL) {
+	         // call the callback
+	         radio_vars.endFrame_cb(capturedTime);
+	         // kick the OS
+	         return;
+	      } else {
+	         while(1);
+	      }
+	  }
+	  else if (HWREG(RFCORE_XREG_CSPZ) == CSPZ_CODE_CHANNEL_BUSY)
+	  {
+		  /*  clear channel assement failed, follow through with CSMA algorithm */
+		  radio_off();
+		  radio_csma_vars.nb++;
+		  if (radio_csma_vars.nb > radio_csma_vars.maxCsmaBackoffs)
+		  {
+		      // TODO!!!! AQUI DEVERIA SINALIZAR QUE HOUVE ERRO!!!!
+		      radio_vars.state = RADIOSTATE_TXRX_DONE;
+		      if (radio_vars.endFrame_cb!=NULL) {
+		         // call the callback
+		         radio_vars.endFrame_cb(capturedTime);
+		         // kick the OS
+		         return;
+		      } else {
+		         while(1);
+		      }
+		  }
+		  else
+		  {
+	  	    radio_csma_vars.macTxBe = MIN(radio_csma_vars.macTxBe+1, radio_csma_vars.maxBe);
+		    radio_txNow();
+		  }
+	  }
+	  else
+	  {
+	    //MAC_ASSERT((HWREG(RFCORE_XREG_CSPZ) == CSPZ_CODE_TX_ACK_TIME_OUT); /* unexpected CSPZ value */
+	    //macTxAckNotReceivedCallback();
+	  }
+   }
+#endif
+
    return;
 }
 

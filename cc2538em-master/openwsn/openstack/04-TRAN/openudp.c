@@ -91,6 +91,19 @@ void openudp_receive(OpenQueueEntry_t* msg) {
       packetfunctions_tossHeader(msg,sizeof(udp_ht));
    }
    
+//teste rff  DBG6TOP_RX
+#if (DEBUG_LOG_RIT  == 1)
+rffbuf[0]= 0x41;
+rffbuf[1]= msg->l4_protocol;
+rffbuf[2]= msg->l4_protocol_compressed;
+rffbuf[3]= (uint8_t) msg->l4_destination_port;
+rffbuf[4]= msg->l4_sourcePortORicmpv6Type;
+rffbuf[5]= (uint8_t) msg->length;
+openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,6);
+#endif
+//teste rff
+
+
    switch(msg->l4_destination_port) {
       case WKP_UDP_COAP:
          opencoap_receive(msg);

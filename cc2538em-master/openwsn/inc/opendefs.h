@@ -35,6 +35,25 @@ static const uint8_t infoStackName[] = "OpenWSN ";
 #define LENGTH_ADDR64b  8
 #define LENGTH_ADDR128b 16
 
+//teste rff
+//flag de identificacao das camadas para facilitar debug
+#define RFF_IEEE802_TX           0x10
+#define RFF_IEEE802_OLA          0x11
+#define RFF_IEEE802_RX           0x15
+#define RFF_SIXTOP_RX            0x25
+#define RFF_SIXTOP_TX            0x20
+#define RFF_COMPONENT_FORWARDING_TX 0x30
+#define RFF_COMPONENT_FORWARDING_RX 0x35
+#define RFF_ICMPv6RPL_RX         0x45
+#define RFF_ICMPv6RPL_TX         0x40
+#define RFF_ICMPv6ECHO_RX        0x55
+#define RFF_ICMPv6ECHO_TX        0x50
+#define RFF_ICMPv6ECHO_RX           0x55
+#define RFF_COMPONENT_OPENCOAP_TX   0x60
+#define RFF_COMPONENT_OPENCOAP_RX   0x65
+#define RFF_COMPONENT_STORMCOAP_TX   0x70
+#define RFF_COMPONENT_STORMCOAP_RX   0x75
+
 
 enum {
    E_SUCCESS                           = 0,
@@ -85,6 +104,7 @@ enum {
    //UDP
    WKP_UDP_COAP                        =  5683,
    WKP_UDP_ECHO                        =     7,
+   WKP_UDP_RINGMASTER                  = 15000,
 };
 
 //status elements
@@ -100,7 +120,8 @@ enum {
    STATUS_QUEUE                        =  8,
    STATUS_NEIGHBORS                    =  9,
    STATUS_KAPERIOD                     = 10,
-   STATUS_MAX                          = 11,
+   STATUS_RFF                          = 11,
+   STATUS_MAX                          = 12,
 };
 
 //component identifiers
@@ -155,6 +176,7 @@ enum {
    COMPONENT_TECHO                     = 0x20,
    COMPONENT_TOHLONE                   = 0x21,
    COMPONENT_UECHO                     = 0x22,
+   COMPONENT_RRT                       = 0x23,
    COMPONENT_SENSORS_DESC              = 0x35,
    COMPONENT_SENSORS_VAL               = 0x36,
 };
@@ -222,7 +244,7 @@ enum {
    ERR_UNSUPPORTED_COMMAND             = 0x2f, // unsupported command {0}
    ERR_MSG_UNKNOWN_TYPE                = 0x30, // unknown message type {0}
    ERR_WRONG_ADDR_TYPE                 = 0x31, // wrong address type {0} (code location {1})
-   ERR_BRIDGE_MISMATCH                 = 0x32, // isBridge mismatch (code location {0})
+   ERR_BRIDGE_MISMATCH                 = 0x32, // bridge mismatch (code location {0})
    ERR_HEADER_TOO_LONG                 = 0x33, // header too long, length {1} (code location {0})
    ERR_INPUTBUFFER_LENGTH              = 0x34, // input length problem, length={0}
    ERR_BOOTED                          = 0x35, // booted

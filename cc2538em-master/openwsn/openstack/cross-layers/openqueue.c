@@ -8,6 +8,12 @@
 
 openqueue_vars_t openqueue_vars;
 
+#if (IEEE802154E_RIT == 1)
+OpenQueueEntry_t advRIT;
+owerror_t openqueue_freePacketRITBuffer(OpenQueueEntry_t* pkt);
+
+#endif
+
 //=========================== prototypes ======================================
 
 void openqueue_reset_entry(OpenQueueEntry_t* entry);
@@ -24,6 +30,13 @@ void openqueue_init() {
    for (i=0;i<QUEUELENGTH;i++){
       openqueue_reset_entry(&(openqueue_vars.queue[i]));
    }
+
+
+#if (IEEE802154E_RIT == 1)
+   // Inicializa a area de memoria do frame do RIT
+   //TODO!!! Foi criado como global mas nao sei se ocupa muito espaco.
+   openqueue_freePacketRITBuffer(&(advRIT));
+#endif
 }
 
 /**
@@ -118,6 +131,24 @@ owerror_t openqueue_freePacketBuffer(OpenQueueEntry_t* pkt) {
    ENABLE_INTERRUPTS();
    return E_FAIL;
 }
+
+#if (IEEE802154E_RIT == 1)
+// Inicializa a area de memoria do frame do RIT
+owerror_t openqueue_freePacketRITBuffer(OpenQueueEntry_t* pkt) {
+
+	INTERRUPT_DECLARATION();
+
+	DISABLE_INTERRUPTS();
+
+	openqueue_reset_entry(pkt);
+
+	ENABLE_INTERRUPTS();
+
+	return E_SUCCESS;
+}
+
+
+#endif
 
 /**
 \brief Free all the packet buffers created by a specific module.

@@ -28,22 +28,21 @@
 #endif
 #include "leds.h"
 
-#if 0
-
 extern osens_mote_sm_state_t sm_state;
 
 
 uint8_t rx_frame[OSENS_MAX_FRAME_SIZE];
 uint8_t tx_frame[OSENS_MAX_FRAME_SIZE];
 static tBuBuf sBuBufRx;
+
+#define BSP_UART_ISR 1
+
+#if (USE_SPI_INTERFACE == 0)
 static tBuBuf sBuBufTx;
 static void buBufFlush(tBuBuf *psBuf);
 static void buBufPopByte(void);
 static void buBufPushByte(void);
 
-#define BSP_UART_ISR 1
-
-#if (USE_SPI_INTERFACE == 0)
 /******************************************************************************
 * FUNCTIONS
 */
@@ -257,9 +256,7 @@ void bspSpiInit(void)
 {
     uint32_t ui32Dummy;
 
-#if SENSOR_ACCEL
     SysCtrlPeripheralEnable(BSP_SPI_SSI_ENABLE_BM);
-#endif
 
     SSIDisable(BSP_SPI_SSI_BASE);
 
@@ -272,15 +269,15 @@ void bspSpiInit(void)
 
     GPIOPinTypeSSI(BSP_SPI_BUS_BASE, (BSP_SPI_MOSI | BSP_SPI_MISO | BSP_SPI_SCK | BSP_SPI_FSS));
 
-    //
-    // Configure SSI module to Motorola/Freescale SPI mode 3:
-    // Polarity  = 1, SCK steady state is high
-    // Phase     = 1, Data changed on first and captured on second clock edge
-    // Word size = 8 bits
-    // Clk       = 8 Mhz
+    /* config de acordo com placa sonoma14 Manual MAX78615+LMU pag 54 -
+	 * Slave in mode 3 (CPOL=1 e CPHA=1) - first bit eh MSB
+     * barramento SPI2 eh de 42MHZ - 42/64 =  656K
+	 * sodoma tem limite de 1MHZ de clock (Manual MAX78615+LMU pag 6)
+	 */
 
-    SSIConfigSetExpClk(BSP_SPI_SSI_BASE, SysCtrlIOClockGet(), SSI_FRF_MOTO_MODE_0,
+    SSIConfigSetExpClk(BSP_SPI_SSI_BASE, SysCtrlIOClockGet(), SSI_FRF_MOTO_MODE_3,
                        SSI_MODE_MASTER,BSP_SPI_CLK_SPD , 8);
+
 
     SSIEnable(BSP_SPI_SSI_BASE);
 
@@ -353,7 +350,7 @@ void ssi_isr_private(void)
 
 }
 
-static uint8_t osens_mote_send_frame(uint8_t *frame, uint8_t size)
+uint8_t osens_mote_send_frame(uint8_t *frame, uint8_t size)
 {
     int8_t sent=size;
 	uint32_t ui32Data;
@@ -419,7 +416,7 @@ static uint8_t receive_spi(osens_mote_sm_state_t *st, uint8_t size)
 	return size;
 }
 
-static uint8_t osens_mote_send_frame(uint8_t *frame, uint8_t size)
+uint8_t osens_mote_send_frame(uint8_t *frame, uint8_t size)
 {
     int8_t sent=size;
 	uint32_t ui32Data;
@@ -625,7 +622,7 @@ uint16_t bspUartRxCharsAvail(void)
     // Critical section. Read volatile variable from RX control structure.
     //
     bool bIntDisabled = IntMasterDisable();
-    ui16Space = BU_GET_USED_SPACE(&sBuBufRx);
+    //ui16Space = BU_GET_USED_SPACE(&sBuBufRx);
 
     //
     // Critical section end.
@@ -637,4 +634,144 @@ uint16_t bspUartRxCharsAvail(void)
 
     return ui16Space;
 }
+
+#if ( SENSOR_ACCEL == 1)
+/**************************************************************************//**
+* @brief    This function reads one or more accelerometer registers.
+*
+* @param    ui8Addr     is the register start address.
+* @param    pui8Buf     is a pointer to the destination buffer.
+* @param    ui8Len      is the number of registers to read.
+*
+* @return   None
+******************************************************************************/
+void accReadReg2(uint8_t ui8Addr, uint8_t *pui8Buf, uint8_t ui8Len)
+{
+    uint32_t ui32Data;
+
+    //
+    // Wait for ongoing transfers to complete and then clear in fifo before
+    // pulling CSn low. This makes sure that accelerometer only retrieves data
+    // intended for it.
+    //
+    while(SSIBusy(BSP_SPI_SSI_BASE))
+    {
+    }
+    while(SSIDataGetNonBlocking(BSP_SPI_SSI_BASE, &ui32Data));
+    {
+    }
+
+    //
+    // Set CSn active
+    //
+    GPIOPinWrite(BSP_ACC_CS_BASE, BSP_ACC_CS, 0);
+
+    //
+    // Send address byte to SSI FIFO and read dummy data
+    //
+    SSIDataPut(BSP_SPI_SSI_BASE, (ui8Addr | ACC_READ_M));
+    SSIDataGet(BSP_SPI_SSI_BASE, &ui32Data);
+
+    while(ui8Len--)
+    {
+        //
+        // Send dummy byte and read returned data from SPI FIFO
+        //
+        SSIDataPut(BSP_SPI_SSI_BASE, 0x00);
+        SSIDataGet(BSP_SPI_SSI_BASE, &ui32Data);
+
+        //
+        // Store read data to buffer
+        //
+        *pui8Buf++ = (ui32Data & 0xFF);
+    }
+
+    //
+    // Clear CSn
+    //
+    GPIOPinWrite(BSP_ACC_CS_BASE, BSP_ACC_CS, BSP_ACC_CS);
+}
+
+
 #endif
+
+#if (SONOMA14 == 1)
+
+/**
+* \brief       Reads the value of a register
+* \par         Details
+*
+* \param[in]   uchRegAddr      - Register Address
+*
+* \retval      Register Value
+*/
+uint32_t read_reg(uint8_t uchRegAddr)
+{
+	uint8_t uchRegValue[3];
+	uint8_t uchSPIWBuffer[5];
+	uint32_t ui32Index;
+	uint32_t ui32Data;
+
+	//preparing read command
+	uchSPIWBuffer[0] = uchRegAddr>>6;
+	uchSPIWBuffer[0] = (uchSPIWBuffer[0]<<2)+1;
+	uchSPIWBuffer[1] = 0x3F & uchRegAddr;
+	uchSPIWBuffer[1] = uchSPIWBuffer[1]<<2;
+	uchSPIWBuffer[2] = 0;
+	uchSPIWBuffer[3] = 0;
+	uchSPIWBuffer[4] = 0;
+
+
+    //
+    // Read any residual data from the SSI port.  This makes sure the receive
+    // FIFOs are empty, so we don't read any unwanted junk.  This is done here
+    // because the SPI SSI mode is full-duplex, which allows you to send and
+    // receive at the same time.  The SSIDataGetNonBlocking function returns
+    // "true" when data was returned, and "false" when no data was returned.
+    // The "non-blocking" function checks if there is any data in the receive
+    // FIFO and does not "hang" if there isn't.
+    //
+    while(SSIDataGetNonBlocking(BSP_SPI_SSI_BASE, &ui32Data))
+    {
+    }
+
+	/*Leitura da spi do sonoma 14 - manual pag 55
+	 * 1o byte=0x1 ;
+	 * 2o byte = endereco (6bits msb)
+	 * 3o,4o,5o bytes = 0x00
+	 */
+    for (ui32Index = 0; ui32Index < 5; ui32Index++)
+    {
+        SSIDataPut(BSP_SPI_SSI_BASE, uchSPIWBuffer[ui32Index]);
+    }
+
+    //
+    // Wait until SSI0 is done transferring all the data in the transmit FIFO.
+    //
+    while(SSIBusy(BSP_SPI_SSI_BASE))
+    {
+    }
+
+    for(ui32Index = 0; ui32Index < 5; ui32Index++)
+    {
+        //
+        // Receive the data using the "blocking" Get function. This function
+        // will wait until there is data in the receive FIFO before returning.
+        //
+        SSIDataGet(BSP_SPI_SSI_BASE, &ui32Data);
+
+        if (ui32Index > 1)
+        {
+        	uchRegValue[ui32Index-2] = (ui32Data & 0xFF);
+        }
+
+    }
+
+	return (uchRegValue[0]<<16) + (uchRegValue[1]<<8) + uchRegValue[2];
+
+}
+
+
+#endif
+
+

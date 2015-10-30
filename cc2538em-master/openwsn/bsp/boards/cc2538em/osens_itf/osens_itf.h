@@ -262,6 +262,16 @@ typedef struct osens_point_ctrl_s
 	} points[OSENS_MAX_POINTS];
 } osens_point_ctrl_t;
 
+typedef struct osens_mote_sm_state_s
+{
+	volatile uint16_t trmout_counter;
+	volatile uint16_t trmout;
+	volatile uint8_t point_index;
+	volatile uint8_t frame_arrived;
+	volatile uint8_t state;
+	volatile uint8_t retries;
+} osens_mote_sm_state_t;
+
 union osens_cmds_u
 {
 	osens_bat_status_t bat_status_cmd;
@@ -321,6 +331,10 @@ uint8_t osens_unpack_cmd_res(osens_cmd_res_t *cmd, uint8_t *frame, uint8_t frame
 uint8_t osens_unpack_cmd_req(osens_cmd_req_t *cmd, uint8_t *frame, uint8_t frame_size);
 uint8_t osens_pack_cmd_res  (osens_cmd_res_t *cmd, uint8_t *frame);
 uint8_t osens_pack_cmd_req  (osens_cmd_req_t *cmd, uint8_t *frame);
+
+
+void accReadReg2(uint8_t ui8Addr, uint8_t *pui8Buf, uint8_t ui8Len);
+uint32_t read_reg(uint8_t uchRegAddr);
 
 #ifdef __cplusplus
 }

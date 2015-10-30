@@ -107,6 +107,11 @@ void    openserial_echo(uint8_t* but, uint8_t bufLen);
 void    isr_openserial_rx(void);
 void    isr_openserial_tx(void);
 
+#if 1 // DBG_USING_UART1
+void    isr1_openserial_rx(void);
+void    isr1_openserial_tx(void);
+#endif
+
 /**
 \}
 \}

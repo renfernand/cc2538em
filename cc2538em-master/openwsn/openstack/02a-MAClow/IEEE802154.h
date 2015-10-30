@@ -39,6 +39,8 @@ enum IEEE802154_fcf_type_enums {
    IEEE154_TYPE_UNDEFINED              = 5,
 };
 
+#define IEEE154_TYPE_OLA      IEEE154_TYPE_BEACON //TESTE RFF VERIFICAR ONDE FICA O OLA
+
 enum IEEE802154_fcf_sec_enums {
    IEEE154_SEC_NO_SECURITY             = 0,
    IEEE154_SEC_YES_SECURITY            = 1,

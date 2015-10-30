@@ -15,7 +15,41 @@
 
 //=========================== debug define ====================================
 
+
 //=========================== define ==========================================
+#define RIT_CLOCK 32768/1000
+
+//time in milisecond
+#if SINK
+//#define START_MAC_RIT_PERIOD          1500
+//#define START_MAC_RIT_RX_WIND_PERIOD  500
+//#define START_MAC_RIT_RX_TO_TX_PERIOD 500
+//#define RIT_ACK_WAIT_PERIOD           START_MAC_RIT_PERIOD/2
+
+#define TICK_MAC_RIT_RX_TO_TX_PERIOD  36045 //16384 =  500 ms        START_MAC_RIT_RX_TO_TX_PERIOD*RIT_CLOCK
+#define TICK_MAC_RIT_RX_WIND_PERIOD   16384 //16384 =  500 ms        START_MAC_RIT_RX_WIND_PERIOD*RIT_CLOCK
+#define TICK_MAC_RIT_PERIOD           22938 //32768 = 1000 ms        START_MAC_RIT_PERIOD*RIT_CLOCK
+#define TICK_MAC_RIT_TX_PERIOD        49152 //32768 = 1000 ms        START_MAC_RIT_PERIOD*RIT_CLOCK
+#define TICK_RIT_ACK_WAIT_PERIOD      8192  //8192  =  250 ms        RIT_ACK_WAIT_PERIOD*RIT_CLOCK
+
+#else
+/*
+#define START_MAC_RIT_RX_TO_TX_PERIOD 1500
+#define START_MAC_RIT_RX_WIND_PERIOD  500
+#define START_MAC_RIT_PERIOD          1900
+#define RIT_ACK_WAIT_PERIOD           100
+ */
+//#define START_MAC_RIT_PERIOD          1000
+//#define START_MAC_RIT_RX_WIND_PERIOD  START_MAC_RIT_PERIOD/2
+//#define START_MAC_RIT_RX_TO_TX_PERIOD START_MAC_RIT_PERIOD/2
+//#define RIT_ACK_WAIT_PERIOD           START_MAC_RIT_PERIOD/4
+#define TICK_MAC_RIT_RX_TO_TX_PERIOD  36045 //16384 =  500 ms        START_MAC_RIT_RX_TO_TX_PERIOD*RIT_CLOCK
+#define TICK_MAC_RIT_RX_WIND_PERIOD   16384 //16384 =  500 ms        START_MAC_RIT_RX_WIND_PERIOD*RIT_CLOCK
+#define TICK_MAC_RIT_PERIOD           22938 //32768 = 1000 ms        START_MAC_RIT_PERIOD*RIT_CLOCK
+#define TICK_MAC_RIT_TX_PERIOD        49152 //32768 = 1000 ms        START_MAC_RIT_PERIOD*RIT_CLOCK
+#define TICK_RIT_ACK_WAIT_PERIOD      8192  //8192  =  250 ms        RIT_ACK_WAIT_PERIOD*RIT_CLOCK
+
+#endif
 
 #define SYNCHRONIZING_CHANNEL       20 // channel the mote listens on to synchronize
 #define TXRETRIES                    3 // number of MAC retries before declaring failed
@@ -88,6 +122,53 @@ bit after the start of the packet.
 */
 #define FIRST_FRAME_BYTE             1
 
+
+#if (IEEE802154E_RIT == 1)
+// the different states of the IEEE802.15.4e state machine
+typedef enum {
+   S_SLEEP                   = 0x00,   // ready for next slot
+   // synchronizing
+   S_SYNCLISTEN              = 0x01,   // listened for packet to synchronize to network  ?????
+   S_SYNCRX                  = 0x02,   // receiving packet to synchronize to network     ?????
+   S_SYNCPROC                = 0x03,   // processing packet just received                ?????
+   // TX
+   S_TXDATAOFFSET            = 0x04,   // waiting to prepare for Tx data
+   S_TXDATAPREPARE           = 0x05,   // preparing for Tx data
+   S_TXDATAREADY             = 0x06,   // ready to Tx data, waiting for 'go'
+   S_TXDATADELAY             = 0x07,   // 'go' signal given, waiting for SFD Tx data
+   S_TXDATA                  = 0x08,   // Tx data SFD received, sending bytes
+
+   S_RXACKOFFSET             = 0x09,   // Tx data done, waiting to prepare for Rx ACK
+   S_RXACKPREPARE            = 0x0a,   // preparing for Rx ACK
+
+   S_RXACKREADY              = 0x0b,   // ready to Rx ACK, waiting for 'go'
+   S_RXACKLISTEN             = 0x0c,   // idle listening for ACK
+   S_RXACK                   = 0x0d,   // Rx ACK SFD received, receiving bytes
+   S_TXPROC                  = 0x0e,   // processing sent data
+   // RX
+   S_RXDATAOFFSET            = 0x0f,   // waiting to prepare for Rx data
+   S_RXDATAPREPARE           = 0x10,   // preparing for Rx data
+   S_RXDATAREADY             = 0x11,   // ready to Rx data, waiting for 'go'
+   S_RXDATALISTEN            = 0x12,   // idle listening for data
+   S_RXDATA                  = 0x13,   // data SFD received, receiving more bytes
+   S_TXACKOFFSET             = 0x14,   // waiting to prepare for Tx ACK
+   S_TXACKPREPARE            = 0x15,   // preparing for Tx ACK
+   S_TXACKREADY              = 0x16,   // Tx ACK ready, waiting for 'go'
+   S_TXACKDELAY              = 0x17,   // 'go' signal given, waiting for SFD Tx ACK
+   S_TXACK                   = 0x18,   // Tx ACK SFD received, sending bytes
+   S_RXPROC                  = 0x19,   // processing received data
+
+   S_RIT_RXOLAREADY          = 0x47,   // Open the window to receive data !!!!!
+   S_RIT_RX_OPEN             = 0x48,   // Open the radio to receive data
+   S_RIT_RX_FOR_TX_BEGIN     = 0x49,   // Start the treatment from TX waiting a RX message
+   S_RIT_FINISH_TX           = 0x4a,   // Finish the tx Message
+   S_RIT_SLEEP_WINDOW        = 0x4b,   // Finish the tx Message
+
+} ieee154e_state_t;
+
+
+
+#else
 // the different states of the IEEE802.15.4e state machine
 typedef enum {
    S_SLEEP                   = 0x00,   // ready for next slot
@@ -120,6 +201,8 @@ typedef enum {
    S_TXACK                   = 0x18,   // Tx ACK SFD received, sending bytes
    S_RXPROC                  = 0x19,   // processing received data
 } ieee154e_state_t;
+
+#endif
 
 // Atomic durations
 // expressed in 32kHz ticks:
@@ -173,6 +256,30 @@ enum ieee154e_linkOption_enum {
 #define DURATION_rt6 ieee154e_vars.lastCapturedTime+TsTxAckDelay-delayTx
 #define DURATION_rt7 ieee154e_vars.lastCapturedTime+TsTxAckDelay-delayTx+wdRadioTx
 #define DURATION_rt8 ieee154e_vars.lastCapturedTime+wdAckDuration
+
+
+// TX
+#define RIT_DURATION_tt1 TsTxOffset-delayTx-maxTxDataPrepare
+#define RIT_DURATION_tt2 TsTxOffset-delayTx
+#define RIT_DURATION_tt3 TsTxOffset-delayTx+wdRadioTx
+#define RIT_DURATION_tt4 500 //wdDataDuration
+#define RIT_DURATION_tt5 TsTxAckDelay-TsShortGT-delayRx-maxRxAckPrepare
+#define RIT_DURATION_tt6 TsTxAckDelay-TsShortGT-delayRx
+#define RIT_DURATION_tt7 TsTxAckDelay+TsShortGT
+#define RIT_DURATION_tt8 wdAckDuration
+// RX
+#define RIT_DURATION_rt1 TsTxOffset-TsLongGT-delayRx-maxRxDataPrepare
+#define RIT_DURATION_rt2 TsTxOffset-TsLongGT-delayRx
+#define RIT_DURATION_rt3 TsTxOffset+TsLongGT
+#define RIT_DURATION_rt4 wdDataDuration
+#define RIT_DURATION_rt5 TsTxAckDelay-delayTx-maxTxAckPrepare
+#define RIT_DURATION_rt6 TsTxAckDelay-delayTx
+#define RIT_DURATION_rt7 TsTxAckDelay-delayTx+wdRadioTx
+#define RIT_DURATION_rt8 wdAckDuration
+
+#define RIT_RX_TO_TX_PERIOD ieee154e_vars.lastCapturedTime + TICK_MAC_RIT_RX_TO_TX_PERIOD
+#define RIT_RX_WIND_PERIOD  ieee154e_vars.lastCapturedTime + TICK_MAC_RIT_RX_WIND_PERIOD
+
 
 //=========================== typedef =========================================
 

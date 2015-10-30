@@ -4,10 +4,17 @@
 #include "openrandom.h"
 #include "packetfunctions.h"
 #include "sixtop.h"
+#include "IEEE802154E.h"
 
 //=========================== variables =======================================
 
 schedule_vars_t schedule_vars;
+
+#if (DEBUG_LOG_RIT  == 1)
+extern ieee154e_vars_t    ieee154e_vars;
+extern ieee154e_stats_t   ieee154e_stats;
+extern ieee154e_dbg_t     ieee154e_dbg;
+#endif
 
 //=========================== prototypes ======================================
 
@@ -484,6 +491,8 @@ cellType_t schedule_getType() {
 
 \returns The neighbor associated wit the current schedule entry.
 */
+#if (IEEE802154E_RIT == 0)
+
 void schedule_getNeighbor(open_addr_t* addrToWrite) {
    
    INTERRUPT_DECLARATION();
@@ -493,6 +502,23 @@ void schedule_getNeighbor(open_addr_t* addrToWrite) {
    
    ENABLE_INTERRUPTS();
 }
+
+#else
+
+/* esta rotina eh usada para pegar o endereco atual do visiinho baseado no slot
+ * como no rit nao tem a ideia de slot vou varrer todos os slots por um vizinho
+ * TODO!!!! AQUI NO FUTURO NAO SEI COMO FAZER PARA DETERMINAR O MELHOR VIZINHO
+ */
+
+void schedule_getNeighbor(open_addr_t* addrToWrite) {
+   INTERRUPT_DECLARATION();
+   DISABLE_INTERRUPTS();
+
+   memcpy(addrToWrite,&(schedule_vars.currentScheduleEntry->neighbor),sizeof(open_addr_t));
+
+   ENABLE_INTERRUPTS();
+}
+#endif
 
 /**
 \brief Get the channel offset of the current schedule entry.

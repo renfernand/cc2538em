@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdint.h>
+#include "board.h"
 #include "osens.h"
 #include "osens_itf.h"
 #include "buf_io.h"

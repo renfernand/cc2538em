@@ -78,7 +78,10 @@ void board_init() {
    bsp_timer_init();
    radiotimer_init();
    uart_init();
-   uart1_init();    //sens_itf
+   uart1_init();    //sens_itf or DBG_USING_UART1
+#if (USE_SPI_INTERFACE == 1)
+   bspSpiInit();
+#endif
    radio_init();
 
   // leds_debug_on();

@@ -44,6 +44,13 @@ typedef enum {
 
 //=========================== typedef =========================================
 
+typedef struct {
+   radiotimer_capture_cbt    startFrame_cb;
+   radiotimer_capture_cbt    endFrame_cb;
+   radio_state_t             state;
+} radio_vars_t;
+
+
 //=========================== variables =======================================
 
 //=========================== prototypes ======================================

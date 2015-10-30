@@ -40,6 +40,10 @@
 
 //#endif
 
+//logica da Lampada
+//rele eh aceso em baixa
+#define BSP_LIGHT_ON  0
+#define BSP_LIGHT_OFF  BSP_LIGHT_LED_OUT
 
 #if SIMULADO
 
@@ -60,7 +64,17 @@
 #define BSP_LIGHT_BASE          GPIO_B_BASE
 #define BSP_LIGHT_IN            GPIO_PIN_0      //!< PB0
 #define BSP_LIGHT_OUT           GPIO_PIN_1      //!< PB1
+
+//USO O LED 3 para indicar a lampada
+
+#define BSP_LIGHT_LED_IN_BASE    GPIO_C_BASE
+#define BSP_LIGHT_LED_IN         GPIO_PIN_2      //!< LED 3 indica a lampada ligada ou desligada
+
+
 #endif
+
+
+
 
 
 /** Sensor interface standard datatypes */

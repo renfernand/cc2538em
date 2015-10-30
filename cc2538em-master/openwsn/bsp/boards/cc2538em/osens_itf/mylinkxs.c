@@ -23,19 +23,38 @@ static volatile bool g_bGPIOIntFlag = false;
 static volatile uint8_t g_Lightchange;
 void bspLedToggle(uint8_t ui8Leds);
 
+#if DEBUG_LOG_RIT
+static uint8_t rffbuf[10];
+#endif
+
 void light_mote_sm(void)
 {
-	uint8_t ucAux,ucBotao;
+	uint8_t ucBotao;
 
 	//pega o valor da lampada
-	sensor_points.points[0].value.value.u8 = light_get_value();
+	//sensor_points.points[0].value.value.u8 = light_get_value();
 
+#if 0 // (DEBUG_LOG_RIT  == 1)
+   {
+ 	 //uint32_t  capturetime=radio_getTimerValue();
+     //uint8_t   *pucAux = (uint8_t *) &capturetime;
+   	 uint8_t   pos=0;
 
+	rffbuf[pos++]= 0x75;
+	rffbuf[pos++]= 0x02;
+	rffbuf[pos++]= sensor_points.points[0].value.value.u8;
+
+	openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+   }
+#endif
+
+#if 0
 	//PROVISORIO!!!!acende lampada
 	ucBotao = GPIOPinRead(GPIO_A_BASE, GPIO_PIN_3);
 	if ((ucBotao & GPIO_PIN_3) == 0) {
 		osens_liga_lampada_local();
 	}
+#endif
 
 }
 
@@ -43,6 +62,7 @@ void light_mote_sm(void)
 void light_init(void) {
 
 	g_Lightchange = 0;
+	sensor_points.points[0].value.value.u8 = 0;
 
     //config leds saida
     GPIOPinTypeGPIOOutput(BSP_LIGHT_LED_OUT_BASE, BSP_LIGHT_LED_OUT);
@@ -51,10 +71,11 @@ void light_init(void) {
     //GPIOPinTypeGPIOInput(BSP_LIGHT_LED_IN_BASE, BSP_LIGHT_LED_IN);
 	//IOCPadConfigSet(BSP_LIGHT_LED_IN_BASE, BSP_LIGHT_LED_IN, IOC_OVERRIDE_DIS);
 
+#if 0 //simulado
     //config botao
 	GPIOPinTypeGPIOInput(BSP_LIGHT_BOTAO_BASE,BSP_LIGHT_BOTAO);
 	IOCPadConfigSet(BSP_LIGHT_BOTAO_BASE, BSP_LIGHT_BOTAO, IOC_OVERRIDE_PUE);
-
+#endif
 
 #if 0
     //
@@ -83,27 +104,61 @@ void light_init(void) {
 	light_off();
 }
 
+#if 0
 void light_timer(void) {
    // switch off the light pulse
    light_off();
 }
+#endif
 
 void light_on(void) {
 
 	g_Lightchange = 1;
-    GPIOPinWrite(BSP_LIGHT_LED_OUT_BASE, BSP_LIGHT_LED_OUT, BSP_LIGHT_LED_OUT);
+    GPIOPinWrite(BSP_LIGHT_LED_OUT_BASE, BSP_LIGHT_LED_OUT, BSP_LIGHT_ON);
+	sensor_points.points[0].value.value.u8 = 1;
 
-	//PROVISORIO!!!!acende lampada
+#if (DEBUG_LOG_RIT  == 1)
+   {
+   	 uint8_t   pos=0;
+
+	rffbuf[pos++]= 0x75;
+	rffbuf[pos++]= 0x02;
+	rffbuf[pos++]= BSP_LIGHT_ON;
+	rffbuf[pos++]= g_Lightchange;
+
+	openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+   }
+#endif
+
+#if 1   //PROVISORIO!!!!acende led 3 da placa
 	if (g_Lightchange)
 	{
 		g_Lightchange = 0;
 		bspLedToggle(BSP_LIGHT_LED_IN);
 	}
+#endif
 
 }
 
 void light_off(void) {
-    GPIOPinWrite(BSP_LIGHT_LED_OUT_BASE, BSP_LIGHT_LED_OUT, 0);
+    GPIOPinWrite(BSP_LIGHT_LED_OUT_BASE, BSP_LIGHT_LED_OUT, BSP_LIGHT_OFF);
+	sensor_points.points[0].value.value.u8 = 0;
+
+
+#if (DEBUG_LOG_RIT  == 1)
+   {
+   	 uint8_t   pos=0;
+
+	rffbuf[pos++]= 0x75;
+	rffbuf[pos++]= 0x03;
+	rffbuf[pos++]= BSP_LIGHT_OFF;
+	rffbuf[pos++]= sensor_points.points[0].value.value.u8;
+
+	openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+   }
+#endif
+
+
 }
 
 
