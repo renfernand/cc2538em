@@ -11,7 +11,6 @@
 #include "neighbors.h"
 // telosb need debugpins to indicate the ISR activity
 #include "debugpins.h"
-#include "debug.h"
 
 //=========================== definition ======================================
 
@@ -78,8 +77,6 @@ void schedule_startDAGroot(void) {
          SCHEDULE_MINIMAL_6TISCH_CHANNELOFFSET,  // channel offset
          &temp_neighbor                          // neighbor
       );
-
-
    }
 }
 

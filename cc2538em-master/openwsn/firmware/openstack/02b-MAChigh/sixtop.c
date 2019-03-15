@@ -16,7 +16,6 @@
 #include "idmanager.h"
 #include "schedule.h"
 #include "msf.h"
-#include "debug.h"
 
 //=========================== define ==========================================
 
@@ -649,7 +648,6 @@ void sixtop_timeout_timer_cb(opentimers_id_t id) {
 void timer_sixtop_sendEb_fired(void) {
     // send EBs on a portion of the minimal cells not exceeding 1/(3(N+1))
     // https://tools.ietf.org/html/draft-chang-6tisch-msf-01#section-2
-
     if(openrandom_get16b()<0xffff/(3*(neighbors_getNumNeighbors()+1))){
         sixtop_sendEB();
     }
@@ -696,29 +694,14 @@ port_INLINE void sixtop_sendEB(void) {
     memset(&addressToWrite,0,sizeof(open_addr_t));
     if (
         (ieee154e_isSynch()==FALSE)                     ||
-#ifdef L2_SECURITY_ACTIVE
         (IEEE802154_security_isConfigured()==FALSE)     ||
-#endif
 		(icmpv6rpl_getMyDAGrank()==DEFAULTDAGRANK)      ||
         icmpv6rpl_daoSent()==FALSE
     ) {
         // I'm not sync'ed, or did not join, or did not acquire a DAGrank or did not send out a DAO
         // before starting to advertize the network, we need to make sure that we are reachable downwards,
         // thus, the condition if DAO was sent
-#if  ENABLE_DEBUG_RFF
-{
-		 uint8_t pos=0;
 
-		 rffbuf[pos++]= 0x31;
-		 rffbuf[pos++]= ieee154e_isSynch();
-		 rffbuf[pos++]= IEEE802154_security_isConfigured();
-		 rffbuf[pos++]= icmpv6rpl_getMyDAGrank();
-		 rffbuf[pos++]= icmpv6rpl_daoSent();
-
-
-		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
-}
-#endif
         // delete packets genereted by this module (EB and KA) from openqueue
         openqueue_removeAllCreatedBy(COMPONENT_SIXTOP);
 
@@ -730,26 +713,10 @@ port_INLINE void sixtop_sendEB(void) {
         return;
     }
 
-#if  ENABLE_DEBUG_RFF
-{
-		 uint8_t pos=0;
-
-		 rffbuf[pos++]= 0x22;
-		 rffbuf[pos++]= ieee154e_isSynch();
-		 rffbuf[pos++]= IEEE802154_security_isConfigured();
-		 rffbuf[pos++]= icmpv6rpl_getMyDAGrank();
-		 rffbuf[pos++]= icmpv6rpl_daoSent();
-
-
-		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
-}
-#endif
     if (sixtop_vars.busySendingEB==TRUE) {
         // don't continue if I'm still sending a previous EB
         return;
     }
-
-
 
     // if I get here, I will send an EB
 

@@ -8,7 +8,7 @@
 #include "radio.h"
 #include "leds.h"
 #include "openserial.h"
-
+#if 0
 #include "debug.h"
 
 #define DBG_CONSUMO     0
@@ -1035,4 +1035,6 @@ void treatdebug(uint8_t macRITstate)
 
 }
 #endif
+#endif
+
 #endif

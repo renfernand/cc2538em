@@ -145,9 +145,6 @@ void radio_init(void) {
    IntRegister(INT_RFCORERTX, radio_isr_internal);
    IntRegister(INT_RFCOREERR, radio_error_isr);
 
-   IntPrioritySet(INT_RFCORERTX, HAL_INT_PRIOR_MAC);
-   IntPrioritySet(INT_RFCOREERR, HAL_INT_PRIOR_MAC);
-
    IntEnable(INT_RFCORERTX);
 
      /* Enable all RF Error interrupts */
@@ -442,7 +439,7 @@ void radio_isr_internal(void) {
    volatile PORT_TIMER_WIDTH capturedTime;
    uint8_t  irq_status0,irq_status1;
 
-   //debugpins_isr_set();
+   debugpins_isr_set();
 
    // capture the time
    capturedTime = sctimer_readCounter();
@@ -465,7 +462,7 @@ void radio_isr_internal(void) {
       if (radio_vars.startFrame_cb!=NULL) {
          // call the callback
          radio_vars.startFrame_cb(capturedTime);
-        // debugpins_isr_clr();
+         debugpins_isr_clr();
          // kick the OS
          return;
       } else {
@@ -480,7 +477,7 @@ void radio_isr_internal(void) {
         if (radio_vars.endFrame_cb!=NULL) {
            // call the callback
            radio_vars.endFrame_cb(capturedTime);
-         //debugpins_isr_clr();
+         debugpins_isr_clr();
            // kick the OS
          return;
         } else {
@@ -495,7 +492,7 @@ void radio_isr_internal(void) {
           if (radio_vars.endFrame_cb!=NULL) {
              // call the callback
              radio_vars.endFrame_cb(capturedTime);
-         //debugpins_isr_clr();
+         debugpins_isr_clr();
              // kick the OS
          return;
           } else {
@@ -511,14 +508,14 @@ void radio_isr_internal(void) {
       if (radio_vars.endFrame_cb!=NULL) {
          // call the callback
          radio_vars.endFrame_cb(capturedTime);
-         //debugpins_isr_clr();
+         debugpins_isr_clr();
          // kick the OS
          return;
       } else {
          while(1);
       }
    }
-   //debugpins_isr_clr();
+   debugpins_isr_clr();
 }
 
 void radio_error_isr(void){

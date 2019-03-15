@@ -27,6 +27,7 @@
 #define BSP_PIND_0              GPIO_PIN_0      //!< PD0 -- radio -RF1-12
 
 
+//=========================== variables =======================================
 
 //=========================== prototypes ======================================
 
@@ -84,6 +85,28 @@ void debugpins_task_clr(void) {
 }
 void debugpins_task_set(void) {
 	GPIOPinWrite(BSP_PIND_BASE, BSP_PIND_1, BSP_PIND_1);
+}
+
+// PA3 isruarttx
+void debugpins_isruarttx_toggle(void) {
+//    bspDBpinToggle(BSP_PINA_BASE, BSP_PINA_3);
+}
+void debugpins_isruarttx_clr(void) {
+//    GPIOPinWrite(BSP_PINA_BASE, BSP_PINA_3, 0);
+}
+void debugpins_isruarttx_set(void) {
+//    GPIOPinWrite(BSP_PINA_BASE, BSP_PINA_3, BSP_PINA_3);
+}
+
+// PA6 isruartrx
+void debugpins_isruartrx_toggle(void) {
+//    bspDBpinToggle(BSP_PINA_BASE, BSP_PINA_6);
+}
+void debugpins_isruartrx_clr(void) {
+//    GPIOPinWrite(BSP_PINA_BASE, BSP_PINA_6, 0);
+}
+void debugpins_isruartrx_set(void) {
+//    GPIOPinWrite(BSP_PINA_BASE, BSP_PINA_6, BSP_PINA_6);
 }
 
 // PA5

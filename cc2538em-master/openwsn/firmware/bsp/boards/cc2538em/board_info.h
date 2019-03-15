@@ -14,6 +14,7 @@
 
 #include "cpu.h"
 #include "interrupt.h"
+#include "opendefs.h"
 //=========================== defines =========================================
 
 //===== interrupt state
@@ -76,16 +77,19 @@
     #endif
     #define PORT_delayRx                         0    //    0us (can not measure)
     // radio watchdog
-#else
+#endif
+
+#if SLOTDURATION==20
     // time-slot related
     #define PORT_TsSlotDuration                 492   // counter counts one extra count, see datasheet
     // execution speed related
-    #define PORT_maxTxDataPrepare               66    // 2014us (measured 746us)
-    #define PORT_maxRxAckPrepare                10    //  305us (measured  83us)
-    #define PORT_maxRxDataPrepare               33    // 1007us (measured  84us)
-    #define PORT_maxTxAckPrepare                22    //  305us (measured 219us)
+    #define PORT_maxTxDataPrepare               110   //  3355us (not measured)
+    #define PORT_maxRxAckPrepare                20    //   610us (not measured)
+    #define PORT_maxRxDataPrepare               33    //  1000us (not measured)
+    #define PORT_maxTxAckPrepare                50    //  1525us (not measured)
+
     // radio speed related
-    #define PORT_delayTx                        7     //  214us (measured 219us)
+    #define PORT_delayTx                        18    //   549us (not measured)
     #define PORT_delayRx                        0     //    0us (can not measure)
     // radio watchdog
 #endif

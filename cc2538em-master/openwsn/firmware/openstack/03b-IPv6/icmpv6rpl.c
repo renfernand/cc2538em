@@ -13,7 +13,6 @@
 #include "IEEE802154_security.h"
 #include "schedule.h"
 #include "msf.h"
-#include "debug.h"
 
 //=========================== variables =======================================
 
@@ -267,12 +266,11 @@ void icmpv6rpl_receive(OpenQueueEntry_t* msg) {
             // stop here if I'm in the DAG root
             break; // break, don't return
          }
-#ifdef L2_SECURITY_ACTIVE
+
          if (IEEE802154_security_isConfigured()==FALSE) {
             // this DIO is not able to be parsed if the mote is not secure yet
             break;
          }
-#endif
          // update routing info for that neighbor
          icmpv6rpl_indicateRxDIO(msg);
 
@@ -773,18 +771,6 @@ void sendDIO(void) {
     ((ICMPv6_ht*)(msg->payload))->code       = IANA_ICMPv6_RPL_DIO;
     packetfunctions_calculateChecksum(msg,(uint8_t*)&(((ICMPv6_ht*)(msg->payload))->checksum));//call last
 
-#if  ENABLE_DEBUG_RFF
-{
-		 uint8_t pos=0;
-
-		 rffbuf[pos++]= 0x41;
-		 rffbuf[pos++]= IANA_ICMPv6_RPL_DIO;
-		 pos = printvar((uint8_t *)&icmpv6rpl_vars.dio.rank,sizeof(uint16_t),rffbuf,pos);
-
-		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
-}
-#endif
-
     //send
     if (icmpv6_send(msg)==E_SUCCESS) {
         icmpv6rpl_vars.busySendingDIO = TRUE;
@@ -992,20 +978,6 @@ void sendDAO(void) {
    ((ICMPv6_ht*)(msg->payload))->type       = msg->l4_sourcePortORicmpv6Type;
    ((ICMPv6_ht*)(msg->payload))->code       = IANA_ICMPv6_RPL_DAO;
    packetfunctions_calculateChecksum(msg,(uint8_t*)&(((ICMPv6_ht*)(msg->payload))->checksum)); //call last
-
-#if  ENABLE_DEBUG_RFF
-{
-	 uint8_t pos=0;
-
-	 rffbuf[pos++]= 0x42;
-	 rffbuf[pos++]= IANA_ICMPv6_RPL_DAO;
-	 rffbuf[pos++]= icmpv6rpl_vars.dao.DAOSequence;
-	 //pos = printvar((uint8_t *)&icmpv6rpl_vars.da,sizeof(uint16_t),rffbuf,pos);
-
-	 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
-}
-#endif
-
 
    //===== send
    if (icmpv6_send(msg)==E_SUCCESS) {

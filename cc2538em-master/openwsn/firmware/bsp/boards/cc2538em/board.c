@@ -1,8 +1,10 @@
 /**
-\brief CC2538-specific definition of the "board" bsp module.
+ * Author: Xavier Vilajosana (xvilajosana@eecs.berkeley.edu)
+ *         Pere Tuset (peretuset@openmote.com)
+ * Date:   July 2013
+ * Description: CC2538-specific definition of the "board" bsp module.
+ */
 
-\author Xavier Vilajosana <xvilajosana@eecs.berkeley.edu>, August 2013.
-*/
 #include "hw_ioc.h"            
 #include "hw_memmap.h"
 #include "hw_ssi.h"
@@ -29,9 +31,6 @@
 #include "hw_ints.h"
 #include  "uarthal.h"
 
-#if (WATCHDOG_CONF_ENABLE == 1)
-#include "watchdog.h"
-#endif
 //=========================== variables =======================================
 
 #define BSP_RADIO_BASE              ( GPIO_D_BASE )
@@ -92,16 +91,9 @@ void board_init(void) {
 // i2c_init();  
    sensors_init();
    cryptoengine_init();
-//   uart1_init();    //sens_itf or DBG_USING_UART1
-#if (USE_SPI_INTERFACE == 1)
-   bspSpiInit();
-#endif
    radio_init();
   // leds_debug_on();
-   
-#if (WATCHDOG_CONF_ENABLE == 1)
-   WatchdogEnable(WATCHDOG_INTERVAL_32768);  //watchdogtimer de 1seg
-#endif
+  
 }
 
 /**
@@ -304,13 +296,13 @@ static void SysCtrlWakeupSetting(void) {
 //=========================== interrupt handlers ==============================
 
 /**
- * GPIO_C ISR handler. User button is GPIO_C_3
- * Toggle debug led when user button is pressed
+ * GPIO_C interrupt handler. User button is GPIO_C_3
+ * Erases a Flash sector to trigger the bootloader backdoor
  */
 void GPIO_C_Isr_Handler(){
 
 	GPIOPinIntClear(GPIO_C_BASE, BSP_USER_BUTTON);
-	//leds_debug_toggle();//toggle led.
+
 }
 
 /**

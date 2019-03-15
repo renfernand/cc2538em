@@ -6,7 +6,6 @@
 #include "openserial.h"
 #include "topology.h"
 #include "IEEE802154_security.h"
-#include "debug.h"
 
 //=========================== define ==========================================
 
@@ -302,7 +301,6 @@ void ieee802154_retrieveHeader(OpenQueueEntry_t*      msg,
          break;
       // no need for a default, since case would have been caught above
    }
-
    //src
    switch (ieee802514_header->src.type) {
       case ADDR_NONE:
@@ -410,18 +408,6 @@ void ieee802154_retrieveHeader(OpenQueueEntry_t*      msg,
       // the topology filter does accept this packet, return
       return;
    }
-
-#if  0 //ENABLE_DEBUG_RFF
-{
-		 uint8_t pos=0;
-
-		 rffbuf[pos++]= 0x71;
-		 rffbuf[pos++]= ieee802514_header->headerLength;
-
-		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
-}
-#endif
-
    // if you reach this, the header is valid
    ieee802514_header->valid=TRUE;
 }

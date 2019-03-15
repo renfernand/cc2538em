@@ -10,6 +10,7 @@
 #include "hw_flash_ctrl.h"
 #include "openserial.h"
 
+#if 0
 static osens_brd_id_t board_info;
 
 unsigned char ucDMAControlTable[1024] __attribute__ ((aligned(1024)));
@@ -859,3 +860,4 @@ uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
 }
 
 */
+#endif

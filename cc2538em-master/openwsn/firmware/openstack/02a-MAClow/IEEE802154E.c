@@ -17,7 +17,6 @@
 #include "sctimer.h"
 #include "openrandom.h"
 #include "msf.h"
-#include "debug.h"
 
 //=========================== definition ======================================
 
@@ -117,7 +116,7 @@ void ieee154e_init(void) {
     memset(&ieee154e_dbg,0,sizeof(ieee154e_dbg_t));
 
     // set singleChannel to 0 to enable channel hopping.
-    ieee154e_vars.singleChannel     = SYNCHRONIZING_CHANNEL;
+    ieee154e_vars.singleChannel     = 0;
     ieee154e_vars.isAckEnabled      = TRUE;
     ieee154e_vars.isSecurityEnabled = FALSE;
     ieee154e_vars.slotDuration      = TsSlotDuration;
@@ -162,9 +161,6 @@ void ieee154e_init(void) {
     // radiotimer_start(ieee154e_vars.slotDuration);
     IEEE802154_security_init();
     ieee154e_vars.serialInhibitTimerId = opentimers_create(TIMER_INHIBIT, TASKPRIO_NONE);
-
-    leds_all_off();
-
 }
 
 //=========================== public ==========================================
@@ -292,7 +288,6 @@ void isr_ieee154e_newSlot(opentimers_id_t id) {
     ieee154e_vars.slotDuration          = TsSlotDuration;
     // radiotimer_setPeriod(ieee154e_vars.slotDuration);
     if (ieee154e_vars.isSync==FALSE) {
-
         if (idmanager_getIsDAGroot()==TRUE) {
             changeIsSync(TRUE);
             ieee154e_resetAsn();
@@ -305,19 +300,7 @@ void isr_ieee154e_newSlot(opentimers_id_t id) {
         // adaptive synchronization
         adaptive_sync_countCompensationTimeout();
 #endif
-#if  0
-{
-		 uint8_t pos=0;
-
-		 rffbuf[pos++]= 0xB1;
-		 rffbuf[pos++]= 0xDD;
-
-		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
-}
-#endif
-
         activity_ti1ORri1();
-
    }
    ieee154e_dbg.num_newSlot++;
 }
@@ -503,7 +486,6 @@ void ieee154e_endOfFrame(PORT_TIMER_WIDTH capturedTime) {
         }
     }
     ieee154e_dbg.num_endOfFrame++;
-
 }
 
 //======= misc
@@ -560,16 +542,10 @@ bool debugPrint_macStats(void) {
 
 port_INLINE void activity_synchronize_newSlot(void) {
 
-
     // I'm in the middle of receiving a packet
     if (ieee154e_vars.state==S_SYNCRX) {
         return;
     }
-
-#if (ENABLE_MULTICHANNEL == 0)
-    if (ieee154e_vars.singleChannelChanged == FALSE)
-    	ieee154e_setSingleChannel(SYNCHRONIZING_CHANNEL);
-#endif
 
     ieee154e_vars.radioOnInit=sctimer_readCounter();
     ieee154e_vars.radioOnThisSlot=TRUE;
@@ -584,11 +560,8 @@ port_INLINE void activity_synchronize_newSlot(void) {
         radio_rfOff();
 
         // update record of current channel
-#if  (ENABLE_MULTICHANNEL == 0)
-        ieee154e_vars.freq = ieee154e_vars.singleChannel;
-#else
         ieee154e_vars.freq = (openrandom_get16b()&0x0F) + 11;
-#endif
+
         // configure the radio to listen to the default synchronizing channel
         radio_setFrequency(ieee154e_vars.freq);
 
@@ -609,6 +582,7 @@ port_INLINE void activity_synchronize_newSlot(void) {
         sctimer_setCapture(ACTION_RX_SFD_DONE);
         sctimer_setCapture(ACTION_RX_DONE);
 #endif
+
         // switch on the radio in Rx mode.
         radio_rxEnable();
         radio_rxNow();
@@ -631,7 +605,6 @@ port_INLINE void activity_synchronize_newSlot(void) {
         sctimer_setCapture(ACTION_RX_SFD_DONE);
         sctimer_setCapture(ACTION_RX_DONE);
 #endif
-
 
         // switch on the radio in Rx mode.
         radio_rxEnable();
@@ -810,19 +783,6 @@ port_INLINE void activity_synchronize_endOfFrame(PORT_TIMER_WIDTH capturedTime) 
 
       // declare synchronized
       changeIsSync(TRUE);
-
-#if  ENABLE_DEBUG_RFF
-{
-		 uint8_t pos=0;
-
-		 rffbuf[pos++]= 0x70;
-		 rffbuf[pos++]= ieee802514_header.valid;
-		 rffbuf[pos++]= ieee802514_header.frameType;
-
-		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
-}
-#endif
-
       // log the info
       openserial_printInfo(COMPONENT_IEEE802154E,ERR_SYNCHRONIZED,
                             (errorparameter_t)ieee154e_vars.slotOffset,
@@ -942,7 +902,6 @@ port_INLINE void activity_ti1ORri1(void) {
         // advance the schedule
         schedule_advanceSlot();
 
-
         // calculate the frequency to transmit on
         ieee154e_vars.freq = calculateFrequency(schedule_getChannelOffset());
 
@@ -982,7 +941,6 @@ port_INLINE void activity_ti1ORri1(void) {
 
     // check the schedule to see what type of slot this is
     cellType = schedule_getType();
-
     switch (cellType) {
         case CELLTYPE_TXRX:
         case CELLTYPE_TX:
@@ -1037,19 +995,6 @@ port_INLINE void activity_ti1ORri1(void) {
             } else {
                 // change state
                 changeState(S_TXDATAOFFSET);
-
-#if  ENABLE_DEBUG_RFF
-{
-		 uint8_t pos=0;
-
-		 rffbuf[pos++]= 0x11;
-		 rffbuf[pos++]= ieee154e_vars.nextActiveSlotOffset;
-		 rffbuf[pos++]= ieee154e_vars.freq;
-		 rffbuf[pos++]= cellType;
-
-		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
-}
-#endif
                 // change owner
                 ieee154e_vars.dataToSend->owner = COMPONENT_IEEE802154E;
                 if (couldSendEB==TRUE) {        // I will be sending an EB
@@ -1162,18 +1107,6 @@ port_INLINE void activity_ti2(void) {
           isr_ieee154e_timer                                // callback
     );
     // radiotimer_schedule(DURATION_tt2);
-
-#if  ENABLE_DEBUG_RFF
-{
-	 uint8_t pos=0;
-
-	 rffbuf[pos++]= 0x30;
-	 rffbuf[pos++]= ieee154e_vars.isSync;
-	 rffbuf[pos++]= ieee154e_vars.dataToSend->l2_frameType;
-
-	 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
-}
-#endif
 
     // make a local copy of the frame
     packetfunctions_duplicatePacket(&ieee154e_vars.localCopyForTransmission, ieee154e_vars.dataToSend);
@@ -1989,10 +1922,8 @@ port_INLINE void activity_ri5(PORT_TIMER_WIDTH capturedTime) {
                 idmanager_getIsDAGroot()                                    == FALSE &&
                 (
                     icmpv6rpl_isPreferredParent(&(ieee154e_vars.dataReceived->l2_nextORpreviousHop)) ||
-#ifdef L2_SECURITY_ACTIVE
                     IEEE802154_security_isConfigured()                      == FALSE ||
-#endif
-					icmpv6rpl_getPreferredParentEui64(&addressToWrite)      == FALSE ||
+                    icmpv6rpl_getPreferredParentEui64(&addressToWrite)      == FALSE ||
                     (
                         icmpv6rpl_getPreferredParentEui64(&addressToWrite)           &&
                         schedule_hasManagedTxCellToNeighbor(&addressToWrite)== FALSE
@@ -2220,16 +2151,10 @@ port_INLINE void activity_ri9(PORT_TIMER_WIDTH capturedTime) {
     // clear local variable
     ieee154e_vars.ackToSend = NULL;
 
-#ifdef L2_SECURITY_ACTIVE
-	if ((idmanager_getIsDAGroot()==FALSE &&
-		icmpv6rpl_isPreferredParent(&(ieee154e_vars.dataReceived->l2_nextORpreviousHop))) ||
-		IEEE802154_security_isConfigured() == FALSE)
-#else
-	if (idmanager_getIsDAGroot()==FALSE &&
-		icmpv6rpl_isPreferredParent(&(ieee154e_vars.dataReceived->l2_nextORpreviousHop)))
-#endif
-    {
-    	synchronizePacket(ieee154e_vars.syncCapturedTime);
+    if ((idmanager_getIsDAGroot()==FALSE &&
+        icmpv6rpl_isPreferredParent(&(ieee154e_vars.dataReceived->l2_nextORpreviousHop))) ||
+        IEEE802154_security_isConfigured() == FALSE) {
+        synchronizePacket(ieee154e_vars.syncCapturedTime);
     }
 
     // inform upper layer of reception (after ACK sent)

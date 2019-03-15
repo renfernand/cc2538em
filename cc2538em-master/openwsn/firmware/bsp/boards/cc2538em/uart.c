@@ -1,31 +1,29 @@
 /**
-\brief CC2538-specific definition of the "uart" bsp module.
+ * Author: Xavier Vilajosana (xvilajosana@eecs.berkeley.edu)
+ *         Pere Tuset (peretuset@openmote.com)
+ * Date:   July 2013
+ * Description: CC2538-specific definition of the "uart" bsp module.
+ */
 
-\author Xavier Vilajosana <xvilajosana@eecs.berkeley.edu>, September 2013.
-*/
-
-
-#include "opendefs.h"
 #include "stdint.h"
 #include "stdio.h"
 #include "string.h"
-#include "uart.h"
-#include "uarthal.h"
-#include "hw_ints.h"
-#include "interrupt.h"
-#include "sys_ctrl.h"
-#include "gpio.h"
-#include "hw_types.h"
-#include "hw_memmap.h"
-#include "board.h"
-#include "ioc.h"
-#include "hw_ioc.h"
-#include "debugpins.h"
-#include "osens.h"
-#include "osens_itf.h"
-#include "openserial.h"
 
-#include "leds.h"
+#include "hw_ints.h"
+#include "hw_ioc.h"
+#include "hw_memmap.h"
+#include "hw_types.h"
+
+#include "gpio.h"
+#include "interrupt.h"
+#include "ioc.h"
+#include "sys_ctrl.h"
+#include "uarthal.h"
+
+#include "board.h"
+#include "debugpins.h"
+#include "openserial.h"
+#include "uart.h"
 
 //=========================== defines =========================================
 
@@ -37,14 +35,11 @@
 typedef struct {
    uart_tx_cbt txCb;
    uart_rx_cbt rxCb;
+   bool        fXonXoffEscaping;
+   uint8_t     xonXoffEscapedByte;
 } uart_vars_t;
 
-uint8_t Uart0ErrorOccur=0;
 uart_vars_t uart_vars;
-extern uint8_t frame[OSENS_MAX_FRAME_SIZE];
-extern uint8_t num_rx_bytes;
-kick_scheduler_t uart1_tx_isr(void);
-kick_scheduler_t uart1_rx_isr(void);
 
 //=========================== prototypes ======================================
 
@@ -53,20 +48,9 @@ static void uart_isr_private(void);
 //=========================== public ==========================================
 
 void uart_init(void) {
-   register uint32_t i;
-   
-   Uart0ErrorOccur =0;
-
    // reset local variables
    memset(&uart_vars,0,sizeof(uart_vars_t));
    
-   // wait some time before initializing UART, since don't want the
-   // OpenMoteCC2538 to start generating data before the FTDI chip on the
-   // OpenBase or XBee Explorer has fully initialized
-   for(i=0;i<320000;i++);
-   
-   // ENABLE UART 0 - STANDARD
-
    // Disable UART function
    UARTDisable(UART0_BASE);
 
@@ -87,15 +71,10 @@ void uart_init(void) {
    // This function uses SysCtrlClockGet() to get the system clock
    // frequency.  This could be also be a variable or hard coded value
    // instead of a function call.
-#if (DEBUG_VIA_SERIAL == 1)
-   UARTConfigSetExpClk(UART0_BASE, SysCtrlIOClockGet(), 9600,
-                      (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
-                       UART_CONFIG_PAR_NONE));
-#else
    UARTConfigSetExpClk(UART0_BASE, SysCtrlIOClockGet(), 115200,
                       (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
                        UART_CONFIG_PAR_NONE));
-#endif
+
    // Enable UART hardware
    UARTEnable(UART0_BASE);
 
@@ -112,65 +91,21 @@ void uart_init(void) {
    IntEnable(INT_UART0);
 }
 
-
-/*
- * Aqui eh utilizado somente para desligar o hardware e ligar novamente...
- * entao nao afeta as variaveis globais de callback e status.
- */
-
-void uart_reset(void) {
-   //register uint32_t i;
-
-   // Disable UART function
-   UARTDisable(UART0_BASE);
-
-   // Disable all UART module interrupts
-   UARTIntDisable(UART0_BASE, 0x1FFF);
-
-   // Enable UART hardware
-   UARTEnable(UART0_BASE);
-
-   // Disable FIFO as we only one 1byte buffer
-   UARTFIFODisable(UART0_BASE);
-
-   // Raise interrupt at end of tx (not by fifo)
-   UARTTxIntModeSet(UART0_BASE, UART_TXINT_MODE_EOT);
-
-   // Register isr in the nvic and enable isr at the nvic
-   //UARTIntRegister(UART0_BASE, uart_isr_private);
-
-   // Enable the UART0 interrupt
-   IntEnable(INT_UART0);
-}
-
 void uart_setCallbacks(uart_tx_cbt txCb, uart_rx_cbt rxCb) {
     uart_vars.txCb = txCb;
     uart_vars.rxCb = rxCb;
 }
 
 void uart_enableInterrupts(void){
-#if 0
-    UARTIntEnable(UART0_BASE, UART_INT_RX | UART_INT_TX);
-#else
-    //teste rff - habilito tambem as interrupcoes de erro para verificar problema da serial
-    //! - \b UART_INT_OE - Overrun Error interrupt
-    //! - \b UART_INT_BE - Break Error interrupt
-    //! - \b UART_INT_PE - Parity Error interrupt
-    //! - \b UART_INT_FE - Framing Error interrupt
-    //! - \b UART_INT_RT - Receive Timeout interrupt
-    //! - \b UART_INT_TX - Transmit interrupt
-    //! - \b UART_INT_RX - Receive interrupt
-    UARTIntEnable(UART0_BASE, UART_INT_RX | UART_INT_TX | UART_INT_RT | UART_INT_FE | UART_INT_PE | UART_INT_BE | UART_INT_OE);
-
-#endif
+    UARTIntEnable(UART0_BASE, UART_INT_RX | UART_INT_TX | UART_INT_RT);
 }
 
 void uart_disableInterrupts(void){
-    UARTIntDisable(UART0_BASE, UART_INT_RX | UART_INT_TX | UART_INT_RT | UART_INT_FE | UART_INT_PE | UART_INT_BE | UART_INT_OE);
+    UARTIntDisable(UART0_BASE, UART_INT_RX | UART_INT_TX | UART_INT_RT);
 }
 
 void uart_clearRxInterrupts(void){
-    UARTIntClear(UART0_BASE, UART_INT_RX);
+    UARTIntClear(UART0_BASE, UART_INT_RX | UART_INT_RT);
 }
 
 void uart_clearTxInterrupts(void){
@@ -178,7 +113,13 @@ void uart_clearTxInterrupts(void){
 }
 
 void  uart_writeByte(uint8_t byteToWrite){
+    if (byteToWrite==XON || byteToWrite==XOFF || byteToWrite==XONXOFF_ESCAPE) {
+        uart_vars.fXonXoffEscaping     = 0x01;
+        uart_vars.xonXoffEscapedByte   = byteToWrite;
+        UARTCharPut(UART0_BASE,XONXOFF_ESCAPE);
+    } else {
 	UARTCharPut(UART0_BASE, byteToWrite);
+}
 }
 
 uint8_t uart_readByte(void){
@@ -208,29 +149,34 @@ static void uart_isr_private(void){
 	IntPendClear(INT_UART0);
 	// Process TX interrupt
 	if(reg & UART_INT_TX){
-             //debugpins_isruarttx_set();
+        debugpins_isruarttx_set();
 	     uart_tx_isr();
-             //debugpins_isruarttx_clr();
+        debugpins_isruarttx_clr();
 	}
 
 
 	// Process RX interrupt
-	if(reg & (UART_INT_RX )) {
-           //debugpins_isruartrx_set();
+    if((reg & (UART_INT_RX)) || (reg & (UART_INT_RT))) {
+        debugpins_isruartrx_set();
            uart_rx_isr();
-           //debugpins_isruartrx_clr();
+        debugpins_isruartrx_clr();
 	}
 }
 
 kick_scheduler_t uart_tx_isr(void) {
    uart_clearTxInterrupts(); // TODO: do not clear, but disable when done
+    if (uart_vars.fXonXoffEscaping==0x01) {
+        uart_vars.fXonXoffEscaping = 0x00;
+        UARTCharPut(UART0_BASE,uart_vars.xonXoffEscapedByte^XONXOFF_MASK);
+    } else {
    if (uart_vars.txCb != NULL) {
        uart_vars.txCb();
    }
+    }
    return DO_NOT_KICK_SCHEDULER;
 }
 
-kick_scheduler_t uart_rx_isr() {
+kick_scheduler_t uart_rx_isr(void) {
    uart_clearRxInterrupts(); // TODO: do not clear, but disable when done
    if (uart_vars.rxCb != NULL) {
        uart_vars.rxCb();

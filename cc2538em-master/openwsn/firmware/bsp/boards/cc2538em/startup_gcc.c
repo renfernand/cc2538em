@@ -72,8 +72,10 @@ static uint32_t pui32Stack[512];
 //*****************************************************************************
 //
 // Customer Configuration Area in Lock Page
-// Holds Image Vector table address (bytes 2013 - 2015) and
-// Image Valid bytes (bytes 2008 -2011)
+// Holds Application entry point (bytes 2012 - 2015) and
+// Image Valid (bytes 2008 - 2011) and
+// Bootloader backdoor (byte 2007) and
+// Reserved (byte 2006 - 2004)
 //
 //*****************************************************************************
 typedef struct
@@ -96,7 +98,6 @@ __attribute__ ((section(".vectors"), used))
 void (* const gVectors[])(void) =
 {
    (void (*)(void))((uint32_t)pui32Stack + sizeof(pui32Stack)), // Stack pointer
-//	(void (*)(void))&__StackTop,
    ResetISR,							   // Reset handler
    NmiSR,                                  // The NMI handler
    FaultISR,                               // The hard fault handler
@@ -310,11 +311,6 @@ void
 ResetISR (void)
 {
 	uint32_t *pui32Src, *pui32Dest;
-	//uint8_t *puxAux = (uint8_t *) pui32Stack;
-
-	//suja a memoria com variavel conhecida
-	//memset (puxAux,0xAA,sizeof(pui32Stack));
-
 
     //
 	// Workaround for PM debug issue
@@ -365,5 +361,4 @@ ResetISR (void)
    {
    }
 }
-
 

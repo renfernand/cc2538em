@@ -15,9 +15,6 @@
 
 /*---------------------------------------------------------------------------
  * RF Config
- * 0xD5 is equal to +3dBm. You can get the register values according to your desired TX power
- * with the SmartRF Studio 7: http://www.ti.com/tool/smartrftm-studio&DCMP=hpa_rf_general&HQS=Other+OT+smartrfstudio
- *
  *---------------------------------------------------------------------------*/
 /* Constants */
 #define POWER_3db   0xD5 //+3dBm - recommended
@@ -104,11 +101,6 @@
   HWREG(RFCORE_SFR_RFST) = CC2538_RF_CSP_OP_ISFLUSHTX; \
   HWREG(RFCORE_SFR_RFST) = CC2538_RF_CSP_OP_ISFLUSHTX; \
 } while(0)
-
-
-#define CC2538_RF_CSP_SACK()  do { \
-  HWREG(RFCORE_SFR_RFST) = SACK; \
- } while(0)
 /*---------------------------------------------------------------------------*/
 
 

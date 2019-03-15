@@ -31,8 +31,7 @@ typedef enum {
     TASKPRIO_SIXTOP_TIMEOUT        = 0x0c,
     TASKPRIO_SNIFFER               = 0x0d,
     TASKPRIO_OPENSERIAL            = 0X0e,
-    TASKPRIO_OSENS_MAIN            = 0x0f,
-    TASKPRIO_MAX                   = 0x10,
+    TASKPRIO_MAX                   = 0x0f,
 } task_prio_t;
 
 #define TASK_LIST_DEPTH           10

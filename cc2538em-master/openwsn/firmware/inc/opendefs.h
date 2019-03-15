@@ -3,6 +3,10 @@
 
 \author Thomas Watteyne <watteyne@eecs.berkeley.edu>, August 2010
 \author Ankur Mehta <mehtank@eecs.berkeley.edu>, September 2010
+\author Savio Sciancalepore <savio.sciancalepore@poliba.it>, TelematicsLab April 2015
+\author Giuseppe Piro <giuseppe.piro@poliba.it>,
+\author Gennaro Boggia <gennaro.boggia@poliba.it>,
+\author Luigi Alfredo Grieco <alfredo.grieco@poliba.it>
 */
 
 #ifndef __OPENDEFS_H
@@ -13,75 +17,7 @@
 #include "toolchain_defs.h"
 #include "board_info.h"
 
-//#define SLOTDURATION 10 // in miliseconds5
 //=========================== define ==========================================
-#define SINK                 0
-
-#define IEEE802154E_TSCH    1    //Standard IEEE802154E 2012
-
-#define ENABLE_MULTICHANNEL    0
-#define SYNCHRONIZING_CHANNEL 20
-
-//se desejar habilitar a seguranca do pacote devo definir L2_SECURITY_ACTIVE
-//#define L2_SECURITY_ACTIVE 1
-
-//se definido topologia fixa habilitar este define
-//#define FORCETOPOLOGY       0
-
-#define OSENS               1
-#define MYLINKXS_SENSORS    0
-#define MBA_BOARD           0    //considero CC2538EM
-
-#define WATCHDOG_CONF_ENABLE 0
-
-
-/* define a UART0 para o DAG ROOT e tambem ja habilita o
- * ponto como dagroot (arquivo openserial flag rffflag)
- * Neste caso a UART1 nao esta disponivel
- * DBG_USING_UART1
- * Define se usará a UART1 pinos P1.18(Rx) P1.20(Tx) para debug.
- * Esta porta eh utilizada por padrao pelo MOTE para comunicacao com SENS_ITF
- * porem aqui ela eh usada pelo SINK como debug...
- * Tambem a porta de comunicacao do sink com o OpenVisualizer eh a UART0. Neste caso
- * somente frames especificos de debug sao passados para a interface 1.
- * Como o mote nao usa a UART0, esta porta eh o debug por default.
- */
-#if SINK
-#define ENABLE_BRIDGE_UART0       1     //Quando DAGROOT ele fica enviando os logs comuns na serial...isso atrapalha o debug
-#define ENABLE_DEBUG_RFF          0     //imprime na serial o debug 0x11
-#define DBG_USING_UART1           0     //quando 1 indica que o debug 0x11 vai para UART1 (somente util qdo dagROOT)
-#define DAGROOT_ENABLE_ONSTARTUP  1
-#define DAGROOT                   1
-#else
-#define ENABLE_BRIDGE_UART0       0     //Quando DAGROOT ele fica enviando os logs comuns na serial...isso atrapalha o debug
-#define ENABLE_DEBUG_RFF          0     //imprime na serial o debug 0x11
-#define DBG_USING_UART1           0     //quando 1 indica que o debug 0x11 vai para UART1 (somente util qdo dagROOT)
-#define DAGROOT_ENABLE_ONSTARTUP  0
-#endif
-
-#if ENABLE_DEBUG_RFF
-#define DEBUG_LOG_RIT         1
-#define DBG_IEEE802_TX        1
-#define DBG_IEEE802_RX        1
-#define DBG_RPL               1
-#define DBG_FORWARDING        1
-#define DBG_CSMACA            0
-#define DBG_IEEE802_TIMER     0
-#define DBG_RADIO_POWER_CONS  0
-#define DBG_OPENQUEUE         0
-#define DBG_APP_1             0     //debug aplicacao - arquivo bsp\osens_itf_mote
-#else
-#define DEBUG_LOG_RIT         0
-#define DBG_IEEE802_TX        0
-#define DBG_IEEE802_RX        0
-#define DBG_RPL               0
-#define DBG_FORWARDING        0
-#define DBG_CSMACA            0
-#define DBG_IEEE802_TIMER     0
-#define DBG_RADIO_POWER_CONS  0
-#define DBG_OPENQUEUE         0
-#define DBG_APP_1             0     //debug aplicacao - arquivo bsp\osens_itf_mote
-#endif
 
 static const uint8_t infoStackName[] = "OpenWSN ";
 #define OPENWSN_VERSION_MAJOR     1
@@ -102,36 +38,10 @@ static const uint8_t infoStackName[] = "OpenWSN ";
 
 #define MAXNUMNEIGHBORS  30
 
+//#define L2_SECURITY_ACTIVE 1
+
 // maximum celllist length
 #define CELLLIST_MAX_LEN 5
-
-//teste rff
-//flag de identificacao das camadas para facilitar debug
-#define RFF_IEEE802_TX               0x10
-#define RFF_IEEE802_OLA              0x11
-#define RFF_IEEE802_RX               0x15
-#define RFF_IEEE802_TIMER            0x16
-#define RFF_IEEE802_RADIO            0x17
-#define RFF_SIXTOP_RX                0x25
-#define RFF_SIXTOP_TX                0x20
-#define RFF_COMPONENT_FORWARDING_TX  0x30
-#define RFF_COMPONENT_FORWARDING_RX  0x35
-#define RFF_ICMPv6RPL_RX             0x45
-#define RFF_ICMPv6RPL_TX             0x40
-#define RFF_ICMPv6ECHO_RX            0x55
-#define RFF_ICMPv6ECHO_TX            0x50
-#define RFF_ICMPv6ECHO_RX            0x55
-#define RFF_COMPONENT_OPENCOAP_TX    0x60
-#define RFF_COMPONENT_OPENCOAP_RX    0x65
-#define RFF_COMPONENT_STORMCOAP_TX   0x70
-#define RFF_COMPONENT_STORMCOAP_RX   0x75
-#define RFF_OPENBRIDGE_TX            0x80
-#define RFF_OPENBRIDGE_RX            0x85
-
-#define RFF_IEEE802_CW               0xFE
-
-#define RFF_OPENQUEUE_ALLOC          0xA0
-#define RFF_OPENQUEUE_FREE           0xA5
 
 enum {
    E_SUCCESS                           = 0,
@@ -172,7 +82,6 @@ enum {
    IANA_ICMPv6_RPL_DAO                 = 0x02,
    IANA_RSVP                           =   46,
    IANA_UNDEFINED                      =  250, //use an unassigned
-   RFF_LIVELIST                        =  253  //Aqui eh um comando de livelist ou um ola normal..
 };
 
 // well known ports (which we define)
@@ -202,8 +111,7 @@ enum {
    STATUS_NEIGHBORS                    =  9,
    STATUS_KAPERIOD                     = 10,
    STATUS_JOINED                       = 11,
-   STATUS_RFF                          = 12,
-   STATUS_MAX                          = 13,
+   STATUS_MAX                          = 12,
 };
 
 //component identifiers
@@ -356,10 +264,6 @@ enum {
    ERR_REPLAY_FAILED                   = 0x47, // OSCOAP replay protection failed
    ERR_DECRYPTION_FAILED               = 0x48, // OSCOAP decryption and tag verification failed
    ERR_ABORT_JOIN_PROCESS              = 0x49, // Aborted join process (code location {0})
-
-   ERR_WRONG_HEADER_OR_ADDRESS         = 0x51, // Topologia nao bate com o endereco ou erro no header
-   ERR_FLASH_WRITE_ERROR               = 0x52, // Ocorreu algum erro na escrita em flash do firmware
-
 };
 
 //=========================== typedef =========================================
