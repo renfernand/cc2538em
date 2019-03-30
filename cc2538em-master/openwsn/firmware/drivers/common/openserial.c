@@ -28,6 +28,7 @@
 #include "icmpv6echo.h"
 #include "msf.h"
 #include "debugpins.h"
+#include "osens.h"
 
 //=========================== variables =======================================
 
@@ -115,6 +116,9 @@ void openserial_init(void) {
         isr_openserial_rx
     );
     uart_enableInterrupts();
+
+
+
 }
 
 void openserial_register(openserial_rsvpt* rsvp) {
@@ -859,6 +863,7 @@ void openserial_handleCommands(void){
 //===== misc
 
 void openserial_debugPrint_timer_cb(opentimers_id_t id){
+	//leds_radio_toggle();
     scheduler_push_task(task_openserial_debugPrint,TASKPRIO_OPENSERIAL);
 }
 

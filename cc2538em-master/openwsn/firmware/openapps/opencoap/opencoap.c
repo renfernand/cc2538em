@@ -10,6 +10,7 @@
 #include "scheduler.h"
 #include "cryptoengine.h"
 #include "icmpv6rpl.h"
+#include "debug.h"
 
 //=========================== defines =========================================
 
@@ -296,20 +297,19 @@ void opencoap_receive(OpenQueueEntry_t* msg) {
       while (found==FALSE && securityReturnCode==COAP_CODE_EMPTY) {
 
         option_count = opencoap_find_option(coap_incomingOptions, coap_incomingOptionsLen, COAP_OPTION_NUM_URIPATH, &option_index);
-        if (
-             option_count == 2                                       &&
-             temp_desc->path0len>0                                   &&
-             temp_desc->path0val!=NULL                               &&
-             temp_desc->path1len>0                                   &&
-             temp_desc->path1val!=NULL
-          ) {
-          // resource has a path of form path0/path1
 
+        //teste rff  300319 - Suporta comandos de até 5 paths - para o firmware download
+        //a checagem do frame é somente pelo primeiro caracter "f"
+        if ( option_count >= 2  &&
+        	 temp_desc->path0len>0  && temp_desc->path0val!=NULL &&
+             temp_desc->path1len>0  && temp_desc->path1val!=NULL )
+          {
+          // resource has a path of form path0/path1
           if (
                 coap_incomingOptions[option_index].length==temp_desc->path0len                                  &&
                 memcmp(coap_incomingOptions[option_index].pValue,temp_desc->path0val,temp_desc->path0len)==0    &&
-                coap_incomingOptions[option_index+1].length==temp_desc->path1len                                &&
-                memcmp(coap_incomingOptions[option_index+1].pValue,temp_desc->path1val,temp_desc->path1len)==0
+                coap_incomingOptions[option_index+1].length==temp_desc->path1len                               // &&
+                //memcmp(coap_incomingOptions[option_index+1].pValue,temp_desc->path1val,temp_desc->path1len)==0
              ) {
              if (temp_desc->securityContext != NULL &&
                  blindContext != temp_desc->securityContext) {
@@ -335,11 +335,13 @@ void opencoap_receive(OpenQueueEntry_t* msg) {
              }
              found = TRUE;
           };
+
         } else {
           // option_count == 0  ||
           // option_count >= 2
           // resource has not a valid path or path is too long
           found = FALSE;
+
         };
 
          // iterate to next resource, if not found

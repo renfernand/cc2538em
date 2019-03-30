@@ -11,6 +11,7 @@
 #include "openudp.h"
 #include "debugpins.h"
 #include "scheduler.h"
+#include "debug.h"
 
 //=========================== variables =======================================
 
@@ -181,6 +182,23 @@ owerror_t forwarding_send(OpenQueueEntry_t* msg) {
         }
     }
     //IPHC inner header and NHC IPv6 header will be added at here
+#if  ENABLE_DEBUG_RFF
+{
+		 uint8_t pos=0;
+
+		 rffbuf[pos++]= 0x30;
+		 rffbuf[pos++]= COMPONENT_FORWARDING;
+		 rffbuf[pos++]= msg->l4_protocol_compressed;
+		 rffbuf[pos++]= msg->l4_protocol;
+		 rffbuf[pos++]= sam;
+		 rffbuf[pos++]= dam;
+
+		 //pos = printvar((uint8_t *)&icmpv6rpl_vars.dio.rank,sizeof(uint16_t),rffbuf,pos);
+
+		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+}
+#endif
+
 
     if (msg->l4_protocol_compressed){
         next_header = IPHC_NH_COMPRESSED;

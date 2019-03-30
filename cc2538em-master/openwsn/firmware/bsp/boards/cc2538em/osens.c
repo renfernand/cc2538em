@@ -9,33 +9,36 @@
 #include "hw_udma.h"
 #include "hw_flash_ctrl.h"
 #include "openserial.h"
+#include "leds.h"
 
-#if 0
 static osens_brd_id_t board_info;
 
-unsigned char ucDMAControlTable[1024] __attribute__ ((aligned(1024)));
+unsigned char ucDMAControlTable[512] __attribute__ ((aligned(512)));
 
 #define MAX_FRAME_CHUNCK 50
 #define MAX_CHUNCK_WRITE 1024
 
 osens_frm_t  osens_frm;
+uint16_t uirffcount=0;
 
 static uint8_t ucSourceBuffer[MAX_CHUNCK_WRITE];
 static uint8_t ucBufferAux[MAX_CHUNCK_WRITE];
 
 //=========================== prototypes ======================================
-static void osens_mote_tick(void);
-void osens_dmaflash_handling(void);
+void osens_mote_tick(opentimers_id_t id);
+void osens_dmaflash_handling (void);
+
+void osens_dmaflash_handling_cb(opentimers_id_t id);
 uint8_t writeflash(uint32_t srcaddr, uint32_t dstaddr, uint8_t datatype, uint32_t bufLen);
 uint8_t readchunck(addr_cmd_t *plen, uint8_t *pbufin, uint8_t *pbufout);
 uint8_t getAdLen(osens_frm_t *pucAddr);
 uint8_t *setASLSVal(uint8_t lentype, addr_cmd_t *paddress, uint8_t *pbuf);
 uint32_t getchunklenbytes(addr_cmd_t *plength);
 
+uint8_t reset_timerId;
 
 uint8_t osens_init(void)
 {
-    //int32_t i32Res;
 
 	memset(&board_info, 0, sizeof(board_info));
 	
@@ -49,13 +52,22 @@ uint8_t osens_init(void)
     //    ucSourceBuffer[i] = i;
     //}
 
-    opentimers_start(OSENS_SM_TICK_MS, TIMER_PERIODIC, TIME_MS, (opentimers_cbt) osens_mote_tick);
+    reset_timerId  = opentimers_create(TIMER_GENERAL_PURPOSE, TASKPRIO_OPENSERIAL);
+
+    //mesmo do openserial_debugPrint_timer_cb
+    opentimers_scheduleIn(
+    	reset_timerId,
+		100,
+        TIME_MS,
+        TIMER_PERIODIC,
+		osens_dmaflash_handling_cb
+    );
 
     return 1;
 }
 
-static void osens_mote_tick(void)
-{
+void osens_dmaflash_handling_cb(opentimers_id_t id){
+
 	scheduler_push_task((task_cbt) osens_dmaflash_handling, TASKPRIO_OSENS_MAIN);
 }
 
@@ -182,7 +194,7 @@ uint8_t writeflash(uint32_t srcaddr, uint32_t dstaddr, uint8_t datatype, uint32_
     //
     HWREG(FLASH_CTRL_FCTL) &= FLASH_CTRL_FCTL_CM_M;
 
-#if  0 //ENABLE_DEBUG_RFF
+#if  ENABLE_DEBUG_RFF
 {
 		 uint8_t pos=0;
 		 uint8_t i, len;
@@ -232,14 +244,31 @@ void osens_dmaflash_handling(void){
 	uint8_t ret=FALSE;
 	uint8_t opt;
 
+
  	 if (osens_frm.flashnewcmd == iFlashErase) {
  		osens_frm.flashnewcmd = iFlashNone;
 
-		i32Res = FlashMainPageErase(FRWNEW_START_ADDR);
+#if ENABLE_DEBUG_RFF
+{
+		 uint8_t pos=0;
+
+		 rffbuf[pos++]= RFF_OSENS;
+		 rffbuf[pos++]= RFF_OSENS;
+		 rffbuf[pos++]= RFF_OSENS;
+		 rffbuf[pos++]= osens_frm.flashnewcmd;
+		 rffbuf[pos++]= (uint8_t) uirffcount;
+
+		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+
+		 uirffcount++;
+}
+#endif
+
+i32Res = FlashMainPageErase(FRWNEW_START_ADDR);
 		if (i32Res > 0)
 		{
 			// log the error Adaptado...criar um codigo para o erro de download de firmware
-			openserial_printError(COMPONENT_CINFO,ERR_FLASH_WRITE_ERROR,
+			openserial_printError(COMPONENT_CINFO,ERR_INPUTBUFFER_LENGTH,
 								  (errorparameter_t)1,
 								  (errorparameter_t)i32Res);
 		}
@@ -249,6 +278,22 @@ void osens_dmaflash_handling(void){
   		osens_frm.flashnewcmd = iFlashNone;
 
 		opt = OP_SHIFT(osens_frm.header);
+
+#if ENABLE_DEBUG_RFF
+{
+		 uint8_t pos=0;
+
+		 rffbuf[pos++]= RFF_OSENS;
+		 rffbuf[pos++]= RFF_OSENS;
+		 rffbuf[pos++]= RFF_OSENS;
+		 rffbuf[pos++]= osens_frm.flashnewcmd;
+		 rffbuf[pos++]= (uint8_t) opt;
+
+		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+
+		 uirffcount++;
+}
+#endif
 
 		 switch (opt) {
 			 case iEqual :
@@ -266,7 +311,7 @@ void osens_dmaflash_handling(void){
 
 		  if (ret == 0) {
 		      // log the error
-		      openserial_printError(COMPONENT_CINFO,ERR_FLASH_WRITE_ERROR,
+		      openserial_printError(COMPONENT_CINFO,ERR_INPUTBUFFER_LENGTH,
 		                            (errorparameter_t)2,
 		                            (errorparameter_t)ret);
 		  }
@@ -860,4 +905,3 @@ uint8_t osens_set_pvalue(uint8_t index, osens_point_t *point)
 }
 
 */
-#endif

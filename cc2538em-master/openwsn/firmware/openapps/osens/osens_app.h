@@ -9,10 +9,11 @@ extern "C" {
 
 void osens_app_init(void);
 
+/*
 typedef struct {
    coap_resource_desc_t desc;
 } cinfo_vars_t;
-
+*/
 
 #ifdef __cplusplus
 }

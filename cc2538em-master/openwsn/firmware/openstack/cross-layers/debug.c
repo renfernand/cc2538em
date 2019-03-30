@@ -8,7 +8,7 @@
 #include "radio.h"
 #include "leds.h"
 #include "openserial.h"
-#if 0
+
 #include "debug.h"
 
 #define DBG_CONSUMO     0
@@ -52,7 +52,7 @@ uint8_t  dutycyclecount;
 extern ieee154e_vars_t    ieee154e_vars;
 extern ieee154e_stats_t   ieee154e_stats;
 #if (IEEE802154E_TSCH == 0)
-extern macneighbors_vars_t macneighbors_vars;
+//extern macneighbors_vars_t macneighbors_vars;
 #endif
 extern uint8_t macRIT_Pending_RX_frameType;
 extern uint8_t macRIT_Pending_TX_frameType;
@@ -1035,6 +1035,4 @@ void treatdebug(uint8_t macRITstate)
 
 }
 #endif
-#endif
-
 #endif

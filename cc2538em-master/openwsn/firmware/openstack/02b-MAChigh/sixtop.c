@@ -16,6 +16,7 @@
 #include "idmanager.h"
 #include "schedule.h"
 #include "msf.h"
+#include "debug.h"
 
 //=========================== define ==========================================
 
@@ -701,7 +702,19 @@ port_INLINE void sixtop_sendEB(void) {
         // I'm not sync'ed, or did not join, or did not acquire a DAGrank or did not send out a DAO
         // before starting to advertize the network, we need to make sure that we are reachable downwards,
         // thus, the condition if DAO was sent
+#if  0 //ENABLE_DEBUG_RFF
+{
+		 uint8_t pos=0;
 
+		 rffbuf[pos++]= 0x31;
+		 rffbuf[pos++]= ieee154e_isSynch();
+		 rffbuf[pos++]= IEEE802154_security_isConfigured();
+		 rffbuf[pos++]= icmpv6rpl_getMyDAGrank();
+		 rffbuf[pos++]= icmpv6rpl_daoSent();
+
+		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+}
+#endif
         // delete packets genereted by this module (EB and KA) from openqueue
         openqueue_removeAllCreatedBy(COMPONENT_SIXTOP);
 
@@ -713,6 +726,20 @@ port_INLINE void sixtop_sendEB(void) {
         return;
     }
 
+#if  0 //ENABLE_DEBUG_RFF
+{
+		 uint8_t pos=0;
+
+		 rffbuf[pos++]= RFF_SIXTOP_TX;
+		 rffbuf[pos++]= ieee154e_isSynch();
+		 rffbuf[pos++]= IEEE802154_security_isConfigured();
+		 rffbuf[pos++]= icmpv6rpl_getMyDAGrank();
+		 rffbuf[pos++]= icmpv6rpl_daoSent();
+
+
+		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+}
+#endif
     if (sixtop_vars.busySendingEB==TRUE) {
         // don't continue if I'm still sending a previous EB
         return;

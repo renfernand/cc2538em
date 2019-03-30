@@ -76,6 +76,7 @@ void openstack_init(void) {
 
    //===== applications
    openapps_init();
+   osens_init();
 
    openserial_printInfo(
       COMPONENT_OPENWSN,ERR_BOOTED,

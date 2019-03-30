@@ -4,7 +4,7 @@
 
 #include "opendefs.h"
 #include "cinfo.h"
-#include "opencoap.h"
+//#include "opencoap.h"
 #include "openqueue.h"
 #include "packetfunctions.h"
 #include "openserial.h"
@@ -12,13 +12,14 @@
 #include "board.h"
 #include "idmanager.h"
 
+cinfo_vars_t cinfo_vars;
+
 //=========================== defines =========================================
 
 const uint8_t cinfo_path0[] = "i";
 
 //=========================== variables =======================================
 
-cinfo_vars_t cinfo_vars;
 
 //=========================== prototypes ======================================
 
@@ -44,6 +45,7 @@ void cinfo_init(void) {
    if(idmanager_getIsDAGroot()==TRUE) return; 
    
    // prepare the resource descriptor for the /i path
+
    cinfo_vars.desc.path0len             = sizeof(cinfo_path0)-1;
    cinfo_vars.desc.path0val             = (uint8_t*)(&cinfo_path0);
    cinfo_vars.desc.path1len             = 0;
@@ -53,9 +55,10 @@ void cinfo_init(void) {
    cinfo_vars.desc.discoverable         = TRUE;
    cinfo_vars.desc.callbackRx           = &cinfo_receive;
    cinfo_vars.desc.callbackSendDone     = &cinfo_sendDone;
-   
+
    // register with the CoAP module
    opencoap_register(&cinfo_vars.desc);
+
 }
 
 //=========================== private =========================================

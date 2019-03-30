@@ -4,7 +4,9 @@
 #include "board.h"
 #include "opendefs.h"
 #include "opencoap.h"
+#include "osens_app.h"
 #include "openqueue.h"
+//#include "cinfo.h"
 #include "osens.h"
 #include "packetfunctions.h"
 #include "opentimers.h"
@@ -15,6 +17,17 @@
 #include "debug.h"
 
 #define TRACE_ON 0
+
+//=========================== variables =======================================
+coap_resource_desc_t osens_frm_vars;
+
+const uint8_t osens_frm_path0 [] = "f";
+const uint8_t osens_frm_path1 [] = "i";
+
+extern osens_frm_t  osens_frm;
+
+
+//=========================== prototypes ======================================
 
 owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header, coap_option_iht*  coap_options);
 void osens_frm_sendDone(OpenQueueEntry_t* msg, owerror_t error);
@@ -28,24 +41,20 @@ static void set_point_val(osens_point_t *point, double value);
 uint8_t *decode_chunk(uint8_t *bufin,uint8_t len,uint8_t *bufout, uint8_t type);
 uint8_t *decode_framehexa(uint8_t *bufin,uint8_t len,uint8_t *bufout);
 
-
-const uint8_t osens_frm_path0 [] = "f";
-coap_resource_desc_t osens_frm_vars;
-extern osens_frm_t  osens_frm;
-cinfo_vars_t cinfo_vars;
-
-
+//=========================== public ==========================================
 
 void osens_app_init(void) {
     int32_t i32Res;
 
     // prepare the resource descriptor for the /d and /s paths
-	osens_frm_vars.path0len = sizeof(osens_frm_path0) -1;
-	osens_frm_vars.path0val = (uint8_t*) (&osens_frm_path0);
-	osens_frm_vars.path1len = 0;
-	osens_frm_vars.path1val = NULL;
-	osens_frm_vars.componentID = COMPONENT_CINFO;
-	osens_frm_vars.callbackRx = &osens_frm_receive;
+	osens_frm_vars.path0len         = sizeof(osens_frm_path0) -1;
+	osens_frm_vars.path0val         = (uint8_t*) (&osens_frm_path0);
+	osens_frm_vars.path1len         = sizeof(osens_frm_path1) -1;
+	osens_frm_vars.path1val         = (uint8_t*) (&osens_frm_path1);
+	osens_frm_vars.componentID      = COMPONENT_CINFO;
+	osens_frm_vars.securityContext  = NULL;
+	osens_frm_vars.discoverable     = TRUE;
+	osens_frm_vars.callbackRx       = &osens_frm_receive;
 	osens_frm_vars.callbackSendDone = &osens_frm_sendDone;
 
 	memset(&osens_frm,0,sizeof(osens_frm));
@@ -53,11 +62,10 @@ void osens_app_init(void) {
 	// register with the CoAP modules
     opencoap_register(&osens_frm_vars);
 
-    osens_init();
-
 }
 
 
+//=========================== private =========================================
 
 
 owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header, coap_option_iht*  coap_options)
@@ -83,7 +91,7 @@ owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header
 
 			 //=== prepare  CoAP response  - esta resposta eh retirada do comando info
 
-			 // stack name and version
+			// stack name and version
 			 packetfunctions_reserveHeaderSize(msg,1);
 			 msg->payload[0] = '\n';
 			 packetfunctions_reserveHeaderSize(msg,sizeof(infoStackName)-1+5);
@@ -94,13 +102,26 @@ owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header
 			 msg->payload[sizeof(infoStackName)-1+5-2] = '.';
 			 msg->payload[sizeof(infoStackName)-1+5-1] = '0'+OPENWSN_VERSION_PATCH;
 
-			 // payload marker
-			 packetfunctions_reserveHeaderSize(msg,1);
-			 msg->payload[0] = COAP_PAYLOAD_MARKER;
-
 			 // set the CoAP header
 			 coap_header->Code                = COAP_CODE_RESP_CONTENT;
 			 outcome                          = E_SUCCESS;
+
+			#if ENABLE_DEBUG_RFF
+			{
+				 uint8_t pos=0;
+				 uint8_t j=0;
+				 rffbuf[pos++]= RFF_COMPONENT_OPENCOAP_TX;
+				 rffbuf[pos++]= 0x80;
+				 rffbuf[pos++]= 0x80;
+				 rffbuf[pos++]= 0x80;
+				 rffbuf[pos++]= OPENWSN_VERSION_MAJOR;
+				 rffbuf[pos++]= OPENWSN_VERSION_MINOR;
+				 rffbuf[pos++]= OPENWSN_VERSION_PATCH;
+
+				 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+			}
+			#endif
+
 			 break;
 
 		case COAP_CODE_REQ_PUT:
@@ -110,11 +131,23 @@ owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header
 
 			 if (((coap_options[1].pValue[0] == 'e') || (coap_options[1].pValue[0] == 'E')) &&
 					 (coap_options[1].type == COAP_OPTION_NUM_URIPATH)) {
-				 //erase the flash firmware new area
-				 osens_frm.flashnewcmd = iFlashErase;
+					//erase the flash firmware new area
+					osens_frm.flashnewcmd = iFlashErase;
+					coap_header->Code = COAP_CODE_RESP_DELETED;
+					outcome = E_SUCCESS;
 
-				coap_header->Code = COAP_CODE_RESP_DELETED;
-				outcome = E_SUCCESS;
+					#if ENABLE_DEBUG_RFF
+					{
+						 uint8_t pos=0;
+
+						 rffbuf[pos++]= RFF_COMPONENT_OPENCOAP_TX;
+						 rffbuf[pos++]= 0x81;
+						 rffbuf[pos++]= 0x81;
+						 rffbuf[pos++]= 0x81;
+
+						 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+					}
+					#endif
 			 }
 			 else {
 				 //get number of sections
@@ -134,10 +167,13 @@ owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header
 						 }
 					}
 
-					#if 0 //ENABLE_DEBUG_RFF
+					#if ENABLE_DEBUG_RFF
 					{
 						 uint8_t pos=0;
 						 uint8_t j=0;
+						 rffbuf[pos++]= RFF_COMPONENT_OPENCOAP_TX;
+						 rffbuf[pos++]= 0x82;
+						 rffbuf[pos++]= 0x82;
 						 rffbuf[pos++]= 0x82;
 						 rffbuf[pos++]= optnum;
 						 for (j=0;j<(osens_frm.frameLen);j++){
@@ -148,12 +184,12 @@ owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header
 					}
 					#endif
 
-
 					osens_frame_parser(buf);
 
 				}
 
-				coap_header->Code = COAP_CODE_RESP_VALID;
+				// set the CoAP header
+				coap_header->Code  = COAP_CODE_RESP_CHANGED;
 				outcome = E_SUCCESS;
 			}
 

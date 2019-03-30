@@ -18,11 +18,55 @@
 #include "board_info.h"
 
 //=========================== define ==========================================
+#define SINK                 0
 
-static const uint8_t infoStackName[] = "OpenWSN ";
+#define ENABLE_MULTICHANNEL    0
+#define SYNCHRONIZING_CHANNEL 20
+
+//se desejar habilitar a seguranca do pacote devo definir L2_SECURITY_ACTIVE
+//#define L2_SECURITY_ACTIVE 1
+
+#if SINK
+#define ENABLE_BRIDGE_UART0       1     //Quando DAGROOT ele fica enviando os logs comuns na serial...isso atrapalha o debug
+#define ENABLE_DEBUG_RFF          0     //imprime na serial o debug 0x11
+#define DBG_USING_UART1           0     //quando 1 indica que o debug 0x11 vai para UART1 (somente util qdo dagROOT)
+#define DAGROOT_ENABLE_ONSTARTUP  1
+#define DAGROOT                   1
+#else
+#define ENABLE_BRIDGE_UART0       0     //Quando DAGROOT ele fica enviando os logs comuns na serial...isso atrapalha o debug
+#define ENABLE_DEBUG_RFF          1     //imprime na serial o debug 0x11
+#define DBG_USING_UART1           0     //quando 1 indica que o debug 0x11 vai para UART1 (somente util qdo dagROOT)
+#define DAGROOT_ENABLE_ONSTARTUP  0
+#endif
+
+#if ENABLE_DEBUG_RFF
+#define DEBUG_LOG_RIT         1
+#define DBG_IEEE802_TX        1
+#define DBG_IEEE802_RX        1
+#define DBG_RPL               1
+#define DBG_FORWARDING        1
+#define DBG_CSMACA            0
+#define DBG_IEEE802_TIMER     0
+#define DBG_RADIO_POWER_CONS  0
+#define DBG_OPENQUEUE         0
+#define DBG_APP_1             0     //debug aplicacao - arquivo bsp\osens_itf_mote
+#else
+#define DEBUG_LOG_RIT         0
+#define DBG_IEEE802_TX        0
+#define DBG_IEEE802_RX        0
+#define DBG_RPL               0
+#define DBG_FORWARDING        0
+#define DBG_CSMACA            0
+#define DBG_IEEE802_TIMER     0
+#define DBG_RADIO_POWER_CONS  0
+#define DBG_OPENQUEUE         0
+#define DBG_APP_1             0     //debug aplicacao - arquivo bsp\osens_itf_mote
+#endif
+
+static const uint8_t infoStackName[] = "OWSNRFF ";
 #define OPENWSN_VERSION_MAJOR     1
 #define OPENWSN_VERSION_MINOR     22
-#define OPENWSN_VERSION_PATCH     1
+#define OPENWSN_VERSION_PATCH     2
 
 #ifndef TRUE
 #define TRUE 1
@@ -38,10 +82,38 @@ static const uint8_t infoStackName[] = "OpenWSN ";
 
 #define MAXNUMNEIGHBORS  30
 
-//#define L2_SECURITY_ACTIVE 1
-
 // maximum celllist length
 #define CELLLIST_MAX_LEN 5
+
+//teste rff
+//flag de identificacao das camadas para facilitar debug
+#define RFF_IEEE802_TX               0x10
+#define RFF_IEEE802_OLA              0x11
+#define RFF_IEEE802_RX               0x15
+#define RFF_IEEE802_TIMER            0x16
+#define RFF_IEEE802_RADIO            0x17
+#define RFF_SIXTOP_RX                0x25
+#define RFF_SIXTOP_TX                0x20
+#define RFF_COMPONENT_FORWARDING_TX  0x30
+#define RFF_COMPONENT_FORWARDING_RX  0x35
+#define RFF_ICMPv6RPL_RX             0x45
+#define RFF_ICMPv6RPL_TX             0x40
+#define RFF_ICMPv6ECHO_RX            0x55
+#define RFF_ICMPv6ECHO_TX            0x50
+#define RFF_ICMPv6ECHO_RX            0x55
+#define RFF_COMPONENT_OPENCOAP_TX    0x60
+#define RFF_COMPONENT_OPENCOAP_RX    0x65
+#define RFF_COMPONENT_STORMCOAP_TX   0x70
+#define RFF_COMPONENT_STORMCOAP_RX   0x75
+#define RFF_OPENBRIDGE_TX            0x80
+#define RFF_OPENBRIDGE_RX            0x85
+#define RFF_OSENS                    0x90
+
+
+#define RFF_IEEE802_CW               0xFE
+
+#define RFF_OPENQUEUE_ALLOC          0xA0
+#define RFF_OPENQUEUE_FREE           0xA5
 
 enum {
    E_SUCCESS                           = 0,
@@ -111,7 +183,8 @@ enum {
    STATUS_NEIGHBORS                    =  9,
    STATUS_KAPERIOD                     = 10,
    STATUS_JOINED                       = 11,
-   STATUS_MAX                          = 12,
+   STATUS_RFF                          = 12,
+   STATUS_MAX                          = 13,
 };
 
 //component identifiers

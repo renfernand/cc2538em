@@ -31,6 +31,8 @@
 #include "hw_ints.h"
 #include  "uarthal.h"
 
+#include "osens_app.h"
+
 //=========================== variables =======================================
 
 #define BSP_RADIO_BASE              ( GPIO_D_BASE )
@@ -84,7 +86,7 @@ void board_init(void) {
   // button_init();
    antenna_init();
    antenna_external();
-   leds_all_on();
+   leds_all_off();
    sctimer_init(); 
    uart_init();
    radio_init();
@@ -92,7 +94,7 @@ void board_init(void) {
    sensors_init();
    cryptoengine_init();
    radio_init();
-  // leds_debug_on();
+   osens_app_init();
   
 }
 

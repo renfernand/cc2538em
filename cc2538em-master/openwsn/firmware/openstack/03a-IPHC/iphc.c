@@ -9,6 +9,7 @@
 #include "neighbors.h"
 #include "openbridge.h"
 #include "icmpv6rpl.h"
+#include "debug.h"
 
 //=========================== variables =======================================
 
@@ -317,6 +318,41 @@ void iphc_receive(OpenQueueEntry_t* msg) {
             &rpl_option
         );
    } else {
+#if  ENABLE_DEBUG_RFF
+{
+	 uint8_t pos=0, i=0, len=0;
+	 uint8_t *pucaux = (uint8_t *) msg->payload;
+	 uint8_t *pucaux2 = (uint8_t *) (msg->payload+msg->length-5);
+
+	 rffbuf[pos++]= 0x80;
+	 rffbuf[pos++]=msg->l2_frameType;
+	 rffbuf[pos++]=msg->length;
+	 rffbuf[pos++]=*pucaux++;
+	 rffbuf[pos++]=*pucaux++;
+	 rffbuf[pos++]=*pucaux++;
+	 rffbuf[pos++]=*pucaux++;
+	 rffbuf[pos++]=*pucaux++;
+	 rffbuf[pos++]=0xEE;
+	 rffbuf[pos++]=*pucaux2++;
+	 rffbuf[pos++]=*pucaux2++;
+	 rffbuf[pos++]=*pucaux2++;
+	 rffbuf[pos++]=*pucaux2++;
+	 rffbuf[pos++]=*pucaux2++;
+/*
+	 if (msg->length > 5)
+        len = 5;
+	 else
+	    len = msg->length;
+
+	 for (i=0;i<len;i++){
+		 rffbuf[pos++]= *pucaux++;
+	 }
+*/
+	 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+}
+#endif
+
+
       openbridge_receive(msg);                   //out to the OpenVisualizer
    }
 }

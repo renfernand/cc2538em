@@ -5,6 +5,7 @@
 #include "packetfunctions.h"
 #include "openserial.h"
 #include "idmanager.h"
+#include "debug.h"
 
 //=========================== variables =======================================
 
@@ -71,7 +72,23 @@ owerror_t cwellknown_receive(OpenQueueEntry_t* msg,
          coap_outgoingOptions[0].length = 1;
          coap_outgoingOptions[0].pValue = &cwellknown_vars.medType;
          *coap_outgoingOptionsLen = 1;
-         
+
+#if  ENABLE_DEBUG_RFF
+{
+		 uint8_t pos=0;
+
+		 rffbuf[pos++]= RFF_COMPONENT_OPENCOAP_TX;
+		 rffbuf[pos++]= RFF_COMPONENT_OPENCOAP_TX;
+		 rffbuf[pos++]= RFF_COMPONENT_OPENCOAP_TX;
+		 rffbuf[pos++]= RFF_COMPONENT_OPENCOAP_TX;
+		 rffbuf[pos++]= coap_outgoingOptions[0].length;
+		 rffbuf[pos++]= coap_outgoingOptions[0].type;
+		 rffbuf[pos++]= COAP_CODE_RESP_CONTENT;
+
+		 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+}
+#endif
+
          // set the CoAP header
          coap_header->Code   = COAP_CODE_RESP_CONTENT;
          

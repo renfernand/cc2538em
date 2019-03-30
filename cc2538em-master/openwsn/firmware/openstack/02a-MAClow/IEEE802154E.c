@@ -17,6 +17,7 @@
 #include "sctimer.h"
 #include "openrandom.h"
 #include "msf.h"
+#include "debug.h"
 
 //=========================== definition ======================================
 
@@ -161,6 +162,9 @@ void ieee154e_init(void) {
     // radiotimer_start(ieee154e_vars.slotDuration);
     IEEE802154_security_init();
     ieee154e_vars.serialInhibitTimerId = opentimers_create(TIMER_INHIBIT, TASKPRIO_NONE);
+
+    //leds_all_off();
+
 }
 
 //=========================== public ==========================================
@@ -1107,6 +1111,19 @@ port_INLINE void activity_ti2(void) {
           isr_ieee154e_timer                                // callback
     );
     // radiotimer_schedule(DURATION_tt2);
+
+#if  ENABLE_DEBUG_RFF
+{
+	 uint8_t pos=0;
+
+	 rffbuf[pos++]= 0x12;
+	 rffbuf[pos++]= ieee154e_vars.isSync;
+	 rffbuf[pos++]= ieee154e_vars.dataToSend->l2_frameType;
+	 rffbuf[pos++]= ieee154e_vars.localCopyForTransmission.l2_securityLevel;
+
+	 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+}
+#endif
 
     // make a local copy of the frame
     packetfunctions_duplicatePacket(&ieee154e_vars.localCopyForTransmission, ieee154e_vars.dataToSend);
