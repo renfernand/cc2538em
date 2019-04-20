@@ -90,6 +90,8 @@ owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header
 			msg->length = 0;
 
 			 //=== prepare  CoAP response  - esta resposta eh retirada do comando info
+			 if (((coap_options[1].pValue[0] == 'i') || (coap_options[1].pValue[0] == 'I')) &&
+					 (coap_options[1].type == COAP_OPTION_NUM_URIPATH)) {
 
 			// stack name and version
 			 packetfunctions_reserveHeaderSize(msg,1);
@@ -106,21 +108,30 @@ owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header
 			 coap_header->Code                = COAP_CODE_RESP_CONTENT;
 			 outcome                          = E_SUCCESS;
 
-			#if ENABLE_DEBUG_RFF
-			{
-				 uint8_t pos=0;
-				 uint8_t j=0;
-				 rffbuf[pos++]= RFF_COMPONENT_OPENCOAP_TX;
-				 rffbuf[pos++]= 0x80;
-				 rffbuf[pos++]= 0x80;
-				 rffbuf[pos++]= 0x80;
-				 rffbuf[pos++]= OPENWSN_VERSION_MAJOR;
-				 rffbuf[pos++]= OPENWSN_VERSION_MINOR;
-				 rffbuf[pos++]= OPENWSN_VERSION_PATCH;
+			 }
+			 else if (((coap_options[1].pValue[0] == 'd') || (coap_options[1].pValue[0] == 'd')) &&
+						 (coap_options[1].type == COAP_OPTION_NUM_URIPATH)) {
+				 uint8_t *pucaux =  (uint8_t *) &osens_frm.frameID;
 
-				 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
+				// stack name and version
+				 packetfunctions_reserveHeaderSize(msg,4);
+/*
+				 msg->payload[0] = '0' + *(pucaux+1);
+				 msg->payload[1] = '0' + *(pucaux+0);
+				 msg->payload[2] = '0' + osens_frm.header;
+				 msg->payload[3] = '0' + osens_frm.framestatus;
+*/
+				 msg->payload[0] =  *(pucaux+1);
+				 msg->payload[1] =  *(pucaux+0);
+				 msg->payload[2] =  osens_frm.header;
+				 msg->payload[3] =  osens_frm.framestatus;
+
+				 // set the CoAP header
+				 coap_header->Code                = COAP_CODE_RESP_CONTENT;
+				 outcome                          = E_SUCCESS;
+
 			}
-			#endif
+
 
 			 break;
 
@@ -133,7 +144,7 @@ owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header
 					 (coap_options[1].type == COAP_OPTION_NUM_URIPATH)) {
 					//erase the flash firmware new area
 					osens_frm.flashnewcmd = iFlashErase;
-					coap_header->Code = COAP_CODE_RESP_DELETED;
+					coap_header->Code = COAP_CODE_RESP_VALID;
 					outcome = E_SUCCESS;
 
 					#if ENABLE_DEBUG_RFF
@@ -142,8 +153,7 @@ owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header
 
 						 rffbuf[pos++]= RFF_COMPONENT_OPENCOAP_TX;
 						 rffbuf[pos++]= 0x81;
-						 rffbuf[pos++]= 0x81;
-						 rffbuf[pos++]= 0x81;
+						 rffbuf[pos++]= COAP_CODE_RESP_VALID;
 
 						 openserial_printStatus(STATUS_RFF,(uint8_t*)&rffbuf,pos);
 					}
@@ -189,7 +199,7 @@ owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header
 				}
 
 				// set the CoAP header
-				coap_header->Code  = COAP_CODE_RESP_CHANGED;
+				coap_header->Code  = COAP_CODE_RESP_VALID;
 				outcome = E_SUCCESS;
 			}
 

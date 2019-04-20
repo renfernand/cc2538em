@@ -53,6 +53,14 @@ enum osens_datatypes_e
 	OSENS_DT_DOUBLE = 0x09, /**< IEEE 754 double precision */
 };
 
+/* sub status from response */
+enum status_frwupd_u {
+   ST_FRWUPD_OK                        = 0,
+   ST_FRWUPD_ERROR_ERASE_FLASH         = 1,
+   ST_FRWUPD_GENERAL_ERROR             = 2,
+   ST_FRWUPD_CODE3                     = 3,
+};
+
 union osens_point_data_u
 {
 	uint8_t  u8;
@@ -111,6 +119,7 @@ typedef struct
 	uint32_t frwnewEndAddr;
 	uint16_t frameID;
 	uint8_t  frameLen;
+	uint8_t    framestatus;
 	uint8_t    header;
 	addr_cmd_t addrold;
 	addr_cmd_t addrnew;

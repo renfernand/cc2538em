@@ -253,8 +253,6 @@ void osens_dmaflash_handling(void){
 		 uint8_t pos=0;
 
 		 rffbuf[pos++]= RFF_OSENS;
-		 rffbuf[pos++]= RFF_OSENS;
-		 rffbuf[pos++]= RFF_OSENS;
 		 rffbuf[pos++]= osens_frm.flashnewcmd;
 		 rffbuf[pos++]= (uint8_t) uirffcount;
 
@@ -265,13 +263,18 @@ void osens_dmaflash_handling(void){
 #endif
 
 i32Res = FlashMainPageErase(FRWNEW_START_ADDR);
+		osens_frm.frameID = 0x0000;
+
 		if (i32Res > 0)
 		{
 			// log the error Adaptado...criar um codigo para o erro de download de firmware
+			osens_frm.framestatus = ST_FRWUPD_ERROR_ERASE_FLASH;
 			openserial_printError(COMPONENT_CINFO,ERR_INPUTBUFFER_LENGTH,
 								  (errorparameter_t)1,
 								  (errorparameter_t)i32Res);
 		}
+		else
+			osens_frm.framestatus = ST_FRWUPD_OK;
 
  	 }
  	 else if (osens_frm.flashnewcmd == iFlashChunck) {
@@ -311,10 +314,16 @@ i32Res = FlashMainPageErase(FRWNEW_START_ADDR);
 
 		  if (ret == 0) {
 		      // log the error
+			  osens_frm.framestatus = ST_FRWUPD_GENERAL_ERROR;
 		      openserial_printError(COMPONENT_CINFO,ERR_INPUTBUFFER_LENGTH,
 		                            (errorparameter_t)2,
-		                            (errorparameter_t)ret);
+		                            (errorparameter_t)ST_FRWUPD_GENERAL_ERROR);
+
+
 		  }
+		  else
+			  osens_frm.framestatus = ST_FRWUPD_OK;
+
 
   	 }
 }
@@ -737,13 +746,15 @@ void osens_frame_parser(uint8_t *pbuf){
 			 break;
 	 }
 
-		#if  0 //ENABLE_DEBUG_RFF
+		#if  ENABLE_DEBUG_RFF
 		{
 			 uint8_t pos=0;
 			 uint8_t i;
 			 uint32_t len;
 			 uint8_t *pucaux = (uint8_t *) &osens_frm.addrnew.u32val;
 			 //DBG_MOTE > 81 05 13 52 cc 02 0c 00 00 00 cc 02 01 b1 b2 b3 b4
+			 //DBG_MOTE > 81 0a 0f 50 cc 02 20 00 00 00 cc 02 01 00 00 00 00
+			 //DBG_MOTE > a1 01 aa d8 4a 00 20 bb 20 90 21 00 cc 02 01 dd ff ff ff ff
 
 			 rffbuf[pos++]= 0x81;
 			 rffbuf[pos++]= (uint8_t) osens_frm.frameID;
