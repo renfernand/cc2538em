@@ -15,6 +15,7 @@
 #include "debugpins.h"
 #include "openserial.h"
 #include "debug.h"
+#include "leds.h"
 
 #define TRACE_ON 0
 
@@ -137,6 +138,9 @@ owerror_t osens_frm_receive(OpenQueueEntry_t* msg, coap_header_iht*  coap_header
 
 		case COAP_CODE_REQ_PUT:
 			// reset packet payload
+
+			leds_radio_toggle();
+
 			msg->payload = &(msg->packet[127]);
 			msg->length = 0;
 

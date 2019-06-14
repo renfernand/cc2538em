@@ -772,7 +772,7 @@ void sendDIO(void) {
     ((ICMPv6_ht*)(msg->payload))->code       = IANA_ICMPv6_RPL_DIO;
     packetfunctions_calculateChecksum(msg,(uint8_t*)&(((ICMPv6_ht*)(msg->payload))->checksum));//call last
 
-#if  0 // ENABLE_DEBUG_RFF
+#if  ENABLE_DEBUG_RFF
 {
 		 uint8_t pos=0;
 
